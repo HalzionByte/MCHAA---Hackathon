@@ -1,10 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base, SessionLocal
 from api.endpoints import router
 from models import *  # Import all models to ensure they're registered with Base
-
-
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
@@ -56,6 +56,21 @@ app = FastAPI(
     description="Multimodal crop anomaly detection and diagnosis",
     version="1.0.0"
 )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    msg = errors[0].get("msg", "Invalid request parameters") if errors else "Invalid request parameters"
+    if "Value error, " in msg:
+        msg = msg.replace("Value error, ", "")
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": "validation_error",
+            "message": msg
+        }
+    )
+
 
 # CORS middleware - allow frontend to call backend
 app.add_middleware(

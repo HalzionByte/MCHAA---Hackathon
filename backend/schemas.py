@@ -1,6 +1,11 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
+
+# ===== Error Response =====
+class ErrorResponseSchema(BaseModel):
+    error: str
+    message: str
 
 # ===== Evidence =====
 class EvidenceSchema(BaseModel):
@@ -57,6 +62,24 @@ class AnomalyResponseSchema(BaseModel):
 class AnalyzeRequestSchema(BaseModel):
     image_url: str
     field_id: str
+
+    @field_validator('image_url')
+    @classmethod
+    def validate_image_url(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("image_url cannot be empty")
+        val = v.strip()
+        if not (val.startswith('http://') or val.startswith('https://')):
+            raise ValueError("image_url must start with http:// or https://")
+        return val
+
+    @field_validator('field_id')
+    @classmethod
+    def validate_field_id(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("field_id cannot be empty")
+        return v.strip()
+
 
 # ===== Field Response =====
 class FieldAnomalySchema(BaseModel):

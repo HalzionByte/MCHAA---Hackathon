@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Anomaly, Diagnosis, Evidence, Recommendation, Field, Farm, Image
-from schemas import AnalyzeRequestSchema, AnomalyResponseSchema
+from schemas import AnalyzeRequestSchema, AnomalyResponseSchema, ErrorResponseSchema
 from services.anomaly_service import detect_anomaly
 from services.agent_service import run_agent
 from datetime import datetime
@@ -15,20 +16,16 @@ router = APIRouter()
 async def analyze_image(request: AnalyzeRequestSchema, db: Session = Depends(get_db)):
     """
     Upload image and analyze for anomalies.
-    
-    Flow:
-    1. Validate field exists
-    2. Create Image record
-    3. Detect anomaly (vision service)
-    4. Create Anomaly record
-    5. Run AI agent for diagnosis
-    6. Return full result
     """
     
     # Validate field exists
     field = db.query(Field).filter(Field.field_id == request.field_id).first()
     if not field:
-        raise HTTPException(status_code=400, detail="Field not found")
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid_field_id", "message": f"Field {request.field_id} not found"}
+        )
+
     
     # Create Image record
     image = Image(
@@ -94,7 +91,10 @@ async def get_field(field_id: str, db: Session = Depends(get_db)):
     """Get field with all anomalies"""
     field = db.query(Field).filter(Field.field_id == field_id).first()
     if not field:
-        raise HTTPException(status_code=404, detail="Field not found")
+        return JSONResponse(
+            status_code=404,
+            content={"error": "field_not_found", "message": f"Field {field_id} not found"}
+        )
     
     return {
         "field_id": field.field_id,
@@ -122,7 +122,10 @@ async def get_farm(farm_id: str, db: Session = Depends(get_db)):
     """Get farm overview with field summaries"""
     farm = db.query(Farm).filter(Farm.farm_id == farm_id).first()
     if not farm:
-        raise HTTPException(status_code=404, detail="Farm not found")
+        return JSONResponse(
+            status_code=404,
+            content={"error": "farm_not_found", "message": f"Farm {farm_id} not found"}
+        )
     
     return {
         "farm_id": farm.farm_id,
@@ -145,7 +148,11 @@ def get_anomaly_details(anomaly_id: str, db: Session):
     """Helper to fetch complete anomaly with all related data"""
     anomaly = db.query(Anomaly).filter(Anomaly.anomaly_id == anomaly_id).first()
     if not anomaly:
-        raise HTTPException(status_code=404, detail="Anomaly not found")
+        return JSONResponse(
+            status_code=404,
+            content={"error": "anomaly_not_found", "message": f"Anomaly {anomaly_id} not found"}
+        )
+
     
     diagnosis = db.query(Diagnosis).filter(Diagnosis.anomaly_id == anomaly_id).first()
     evidence = db.query(Evidence).filter(Evidence.anomaly_id == anomaly_id).first()
