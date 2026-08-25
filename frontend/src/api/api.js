@@ -74,4 +74,17 @@ export async function getTelemetryHistory(fieldId, metric) {
   return [];
 }
 
+export async function getAllTelemetryHistory(fieldId) {
+  if (USE_MOCK_DATA) {
+    return MOCK_TELEMETRY_HISTORY[fieldId] || [];
+  }
+  try {
+    const response = await api.get(`/api/fields/${fieldId}/telemetry`);
+    return normalizeResponse(response.data);
+  } catch (error) {
+    console.error('Error fetching telemetry history:', error);
+    return [];
+  }
+}
+
 export default api;

@@ -5,6 +5,7 @@ import { getAnomaly } from '../api/api';
 import EvidenceCard from './EvidenceCard';
 import DiagnosisCard from './DiagnosisCard';
 import RecommendationCard from './RecommendationCard';
+import HealthTimeline from './HealthTimeline';
 import { getSeverityColor, getSeverityLabel, getSeverityBg } from '../lib/severity';
 
 export default function AnomalyDetailed({ anomalyId }) {
@@ -60,9 +61,13 @@ export default function AnomalyDetailed({ anomalyId }) {
       </div>
 
       <div className="bento-grid">
-        <EvidenceCard evidence={anomaly.evidence} />
+        <EvidenceCard evidence={anomaly.evidence} fieldId={anomaly.field_id} />
         <DiagnosisCard diagnosis={anomaly.diagnosis} />
         <RecommendationCard recommendation={anomaly.recommendation} />
+      </div>
+
+      <div className="mt-6">
+        <HealthTimeline fieldId={anomaly.field_id} />
       </div>
     </div>
   );
