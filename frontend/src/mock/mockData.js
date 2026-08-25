@@ -89,3 +89,28 @@ export const MOCK_ANOMALY = {
   },
   created_at: "2024-12-08T14:30:00Z"
 };
+
+export const MOCK_TELEMETRY_HISTORY = {
+  "field-001": Array.from({ length: 45 }, (_, i) => {
+    const date = new Date(Date.now() - (44 - i) * 86400000);
+    return {
+      date: date.toISOString().split('T')[0],
+      ndvi: Math.max(0.1, Math.min(1, 0.65 + Math.sin(i * 0.3) * 0.08 + (Math.random() - 0.5) * 0.02)),
+      soil_moisture: Math.max(5, 22 + Math.sin(i * 0.2) * 8 + (Math.random() - 0.5) * 3),
+      temperature: Math.max(10, 28 + Math.sin(i * 0.15) * 6 + (Math.random() - 0.5) * 2),
+      rainfall: Math.max(0, Math.sin(i * 0.4) * 5 + (Math.random() - 0.3) * 3),
+      humidity: Math.max(20, Math.min(100, 55 + Math.sin(i * 0.1) * 15 + (Math.random() - 0.5) * 5)),
+    };
+  }),
+  "field-002": Array.from({ length: 45 }, (_, i) => {
+    const date = new Date(Date.now() - (44 - i) * 86400000);
+    return {
+      date: date.toISOString().split('T')[0],
+      ndvi: Math.max(0.1, Math.min(1, 0.72 + Math.sin(i * 0.25) * 0.05 + (Math.random() - 0.5) * 0.015)),
+      soil_moisture: Math.max(10, 35 + Math.sin(i * 0.18) * 10 + (Math.random() - 0.5) * 2),
+      temperature: Math.max(10, 26 + Math.sin(i * 0.12) * 4 + (Math.random() - 0.5) * 1.5),
+      rainfall: Math.max(0, Math.sin(i * 0.35) * 8 + (Math.random() - 0.2) * 4),
+      humidity: Math.max(20, Math.min(100, 62 + Math.sin(i * 0.08) * 12 + (Math.random() - 0.5) * 4)),
+    };
+  }),
+};

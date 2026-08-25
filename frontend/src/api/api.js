@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { MOCK_FARM, MOCK_FIELD, MOCK_ANOMALY } from '../mock/mockData';
+import { MOCK_FARM, MOCK_FIELD, MOCK_ANOMALY, MOCK_TELEMETRY_HISTORY } from '../mock/mockData';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
@@ -64,6 +64,14 @@ export async function analyzeImage(imageUrl, fieldId) {
     console.error('Error analyzing image:', error);
     throw error;
   }
+}
+
+export async function getTelemetryHistory(fieldId, metric) {
+  if (USE_MOCK_DATA) {
+    const history = MOCK_TELEMETRY_HISTORY[fieldId] || [];
+    return history.map(d => d[metric]);
+  }
+  return [];
 }
 
 export default api;
