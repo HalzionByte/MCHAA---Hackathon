@@ -34,6 +34,20 @@
       "lng": 74.3587
     }
   },
+  "farmer_decision": {
+    "status_color": "RED",
+    "status_emoji": "🚨",
+    "headline_what": "WATER ZONE B3 TODAY",
+    "headline_why": "Soil is dry (18% moisture) and heat is high (34°C).",
+    "urgency_hours": 24
+  },
+  "impact_metrics": {
+    "crop_loss_saved_usd": 450,
+    "water_saved_liters": 3000,
+    "cost_saved_usd": 120
+  },
+  "voice_audio_url": "/api/anomalies/anom-001/voice",
+  "sms_text": "[CROP ALERT] Zone B3 RED. Water needed in 24h. Reason: 18% moisture. Crop loss saved: $450.",
   "evidence": {
     "soil_moisture_percent": 18,
     "rainfall_7d_mm": 2,
@@ -54,6 +68,7 @@
   "created_at": "2024-12-08T14:30:00Z"
 }
 ```
+
 
 **Error (400):**
 ```json
@@ -164,6 +179,35 @@
   ]
 }
 ```
+
+---
+
+### 5. GET /api/anomalies/{anomaly_id}/voice
+**Purpose:** Serves voice audio guide or text-to-speech script for illiterate / low-reading farmers
+
+**Response (200 OK):**
+```json
+{
+  "anomaly_id": "anom-001",
+  "audio_url": "/static/audio/anom-001.mp3",
+  "spoken_script": "Attention Farmer! Field B, Zone B3 needs water today. Turn on irrigation to save 500 kilograms of wheat."
+}
+```
+
+---
+
+### 6. GET /api/anomalies/{anomaly_id}/sms
+**Purpose:** Serves low-bandwidth SMS / WhatsApp / USSD alert payload (< 160 characters)
+
+**Response (200 OK):**
+```json
+{
+  "anomaly_id": "anom-001",
+  "sms_text": "[CROP ALERT] Zone B3 RED. Water needed in 24h. Reason: 18% moisture. Crop loss saved: $450.",
+  "character_count": 94
+}
+```
+
 
 ---
 
