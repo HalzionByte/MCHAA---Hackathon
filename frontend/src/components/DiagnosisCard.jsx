@@ -1,9 +1,9 @@
+import { getSeverityClass, getSeverityColor } from '../lib/severity';
+
 export default function DiagnosisCard({ diagnosis }) {
   const confidence = diagnosis.confidence;
-  const severityClass = confidence > 0.7 ? 'severity-high' : 
-                       confidence > 0.3 ? 'severity-medium' : 'severity-low';
-  const progressColor = confidence > 0.7 ? 'var(--crimson)' : 
-                       confidence > 0.3 ? 'var(--amber)' : 'var(--emerald)';
+  const severityClass = getSeverityClass(confidence);
+  const progressColor = getSeverityColor(confidence);
 
   return (
     <div className="glass p-5">

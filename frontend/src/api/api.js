@@ -11,11 +11,15 @@ const api = axios.create({
   }
 });
 
+function normalizeResponse(data) {
+  return data?.data ?? data;
+}
+
 export async function getFarm(farmId) {
   if (USE_MOCK_DATA) return Promise.resolve(MOCK_FARM);
   try {
     const response = await api.get(`/api/farms/${farmId}`);
-    return response.data;
+    return normalizeResponse(response.data);
   } catch (error) {
     console.error('Error fetching farm:', error);
     throw error;
@@ -26,7 +30,7 @@ export async function getField(fieldId) {
   if (USE_MOCK_DATA) return Promise.resolve(MOCK_FIELD);
   try {
     const response = await api.get(`/api/fields/${fieldId}`);
-    return response.data;
+    return normalizeResponse(response.data);
   } catch (error) {
     console.error('Error fetching field:', error);
     throw error;
@@ -37,7 +41,7 @@ export async function getAnomaly(anomalyId) {
   if (USE_MOCK_DATA) return Promise.resolve(MOCK_ANOMALY);
   try {
     const response = await api.get(`/api/anomalies/${anomalyId}`);
-    return response.data;
+    return normalizeResponse(response.data);
   } catch (error) {
     console.error('Error fetching anomaly:', error);
     throw error;
@@ -55,7 +59,7 @@ export async function analyzeImage(imageUrl, fieldId) {
       image_url: imageUrl,
       field_id: fieldId
     });
-    return response.data;
+    return normalizeResponse(response.data);
   } catch (error) {
     console.error('Error analyzing image:', error);
     throw error;

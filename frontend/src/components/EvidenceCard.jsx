@@ -21,7 +21,9 @@ export default function EvidenceCard({ evidence }) {
         </div>
         <div className="stat-row">
           <span className="stat-label">NDVI Change</span>
-          <span className="stat-value">{evidence.vegetation_ndvi_change > 0 ? '+' : ''}{evidence.vegetation_ndvi_change}</span>
+          <span className="stat-value">
+            {evidence.vegetation_ndvi_change > 0 ? '+' : ''}{evidence.vegetation_ndvi_change} NDVI
+          </span>
         </div>
       </div>
     </div>

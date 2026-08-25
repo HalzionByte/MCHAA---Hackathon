@@ -2,12 +2,10 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { useRouter } from 'next/navigation';
-import AnomalyDetailed from '../../components/AnomalyDetailed';
+import AnomalyDetailed from '../../../components/AnomalyDetailed';
 
 export default function AnomalyPage() {
   const { anomalyId } = useParams();
-  const router = useRouter();
 
   if (!anomalyId) return <div className="p-8 text-center text-muted">Loading...</div>;
 

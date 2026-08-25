@@ -3,15 +3,23 @@
 import React, { useState } from 'react';
 import { analyzeImage } from '../api/api';
 
+const URL_REGEX = /^https?:\/\/.+/;
+
 export default function ImageUpload({ fieldId, onAnalyzeComplete }) {
   const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const isValidUrl = (url) => URL_REGEX.test(url.trim());
+
   const handleAnalyze = async (e) => {
     e.preventDefault();
     if (!imageUrl.trim()) {
       setError('Please enter an image URL');
+      return;
+    }
+    if (!isValidUrl(imageUrl)) {
+      setError('Please enter a valid URL starting with http:// or https://');
       return;
     }
     setLoading(true);
@@ -38,11 +46,12 @@ export default function ImageUpload({ fieldId, onAnalyzeComplete }) {
           onChange={(e) => setImageUrl(e.target.value)}
           disabled={loading}
           className="input-field"
+          aria-describedby="url-error"
         />
         <button type="submit" disabled={loading} className="btn-primary w-full">
           {loading ? 'Analyzing...' : 'Analyze Image'}
         </button>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p id="url-error" className="text-sm text-red-400">{error}</p>}
       </form>
     </div>
   );

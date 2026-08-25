@@ -5,6 +5,7 @@ import { getAnomaly } from '../api/api';
 import EvidenceCard from './EvidenceCard';
 import DiagnosisCard from './DiagnosisCard';
 import RecommendationCard from './RecommendationCard';
+import { getSeverityColor, getSeverityLabel, getSeverityBg } from '../lib/severity';
 
 export default function AnomalyDetailed({ anomalyId }) {
   const [anomaly, setAnomaly] = useState(null);
@@ -28,9 +29,9 @@ export default function AnomalyDetailed({ anomalyId }) {
   if (!anomaly) return <div className="p-8 text-center text-muted">Anomaly not found</div>;
 
   const severity = anomaly.severity;
-  const severityColor = severity > 0.7 ? 'var(--crimson)' : 
-                       severity > 0.3 ? 'var(--amber)' : 'var(--emerald)';
-  const severityLabel = severity > 0.7 ? 'Critical' : severity > 0.3 ? 'Moderate' : 'Low';
+  const severityColor = getSeverityColor(severity);
+  const severityLabel = getSeverityLabel(severity);
+  const severityBg = getSeverityBg(severity);
 
   return (
     <div className="p-6">
@@ -43,11 +44,7 @@ export default function AnomalyDetailed({ anomalyId }) {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div>
             <span className="badge badge-alert">Active</span>
-            <span className="badge" style={{ 
-              background: severityColor === 'var(--crimson)' ? 'rgba(239,68,68,0.15)' : 
-                         severityColor === 'var(--amber)' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)',
-              color: severityColor 
-            }}>
+            <span className="badge" style={{ background: severityBg, color: severityColor }}>
               {severityLabel} ({(severity * 100).toFixed(0)}%)
             </span>
           </div>

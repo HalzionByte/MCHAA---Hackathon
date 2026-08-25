@@ -4,31 +4,35 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { getField } from '../api/api';
+import { getSeverityClass } from '../lib/severity';
 
 function AnomalyMarkers({ anomalies }) {
-  return anomalies?.map((anomaly) => (
-    <Marker
-      key={anomaly.anomaly_id}
-      position={[anomaly.detected_region.coordinates.lat, anomaly.detected_region.coordinates.lng]}
-    >
-      <Popup>
-        <div className="glass p-4 min-w-[200px]">
-          <h4 className="font-medium mb-2">Zone {anomaly.detected_region.zone}</h4>
-          <p className="text-sm">
-            Type: {anomaly.anomaly_type.replace('_', ' ')}<br/>
-            Severity: <span className={`severity-${anomaly.severity > 0.7 ? 'high' : anomaly.severity > 0.3 ? 'medium' : 'low'}`}>
-              {((anomaly.severity * 100).toFixed(0))}%
-            </span>
-          </p>
-        </div>
-      </Popup>
-    </Marker>
-  ));
+  return anomalies?.map((anomaly) => {
+    const coords = anomaly.detected_region?.coordinates;
+    if (!coords) return null;
+    return (
+      <Marker
+        key={anomaly.anomaly_id}
+        position={[coords.lat, coords.lng]}
+      >
+        <Popup>
+          <div className="glass p-4 min-w-[200px]">
+            <h4 className="font-medium mb-2">Zone {anomaly.detected_region.zone}</h4>
+            <p className="text-sm">
+              Type: {anomaly.anomaly_type.replace('_', ' ')}<br/>
+              Severity: <span className={getSeverityClass(anomaly.severity)}>
+                {((anomaly.severity * 100).toFixed(0))}%
+              </span>
+            </p>
+          </div>
+        </Popup>
+      </Marker>
+    );
+  });
 }
 
 export default function FieldMap({ fieldId }) {
   const [field, setField] = useState(null);
-  const [iconsReady, setIconsReady] = useState(false);
 
   useEffect(() => {
     async function loadField() {
@@ -43,16 +47,13 @@ export default function FieldMap({ fieldId }) {
   }, [fieldId]);
 
   useEffect(() => {
-    if (!iconsReady) {
-      delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
-      setIconsReady(true);
-    }
-  }, [iconsReady]);
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
+  }, []);
 
   if (!field) return <div className="glass p-8 text-center text-muted">Loading field map...</div>;
 
@@ -65,7 +66,7 @@ export default function FieldMap({ fieldId }) {
         <MapContainer center={center} zoom={14} scrollWheelZoom={true} className="h-full w-full">
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           />
           {field.boundary && (
             <Circle
