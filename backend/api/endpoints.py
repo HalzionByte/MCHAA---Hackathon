@@ -76,10 +76,10 @@ async def analyze_image(request: AnalyzeRequestSchema, db: Session = Depends(get
             anomaly.anomaly_id,
             request.field_id,
             anomaly.anomaly_type,
-            evidence_data,
-            db
+            evidence_data
         )
     )
+
     
     # Return anomaly details with partial response (agent runs in background)
     return get_anomaly_details(anomaly.anomaly_id, db)
