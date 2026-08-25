@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { getAnomaly } from '../api/api';
 import EvidenceCard from './EvidenceCard';

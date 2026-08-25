@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { getFarm } from '../api/api';
 import Link from 'next/link';
