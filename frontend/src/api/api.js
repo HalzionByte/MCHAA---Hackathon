@@ -11,12 +11,8 @@ const api = axios.create({
   }
 });
 
-// Fetch farm by ID
 export async function getFarm(farmId) {
-  if (USE_MOCK_DATA) {
-    return Promise.resolve(MOCK_FARM);
-  }
-  
+  if (USE_MOCK_DATA) return Promise.resolve(MOCK_FARM);
   try {
     const response = await api.get(`/api/farms/${farmId}`);
     return response.data;
@@ -26,12 +22,8 @@ export async function getFarm(farmId) {
   }
 }
 
-// Fetch field by ID
 export async function getField(fieldId) {
-  if (USE_MOCK_DATA) {
-    return Promise.resolve(MOCK_FIELD);
-  }
-  
+  if (USE_MOCK_DATA) return Promise.resolve(MOCK_FIELD);
   try {
     const response = await api.get(`/api/fields/${fieldId}`);
     return response.data;
@@ -41,12 +33,8 @@ export async function getField(fieldId) {
   }
 }
 
-// Fetch anomaly by ID
 export async function getAnomaly(anomalyId) {
-  if (USE_MOCK_DATA) {
-    return Promise.resolve(MOCK_ANOMALY);
-  }
-  
+  if (USE_MOCK_DATA) return Promise.resolve(MOCK_ANOMALY);
   try {
     const response = await api.get(`/api/anomalies/${anomalyId}`);
     return response.data;
@@ -56,15 +44,12 @@ export async function getAnomaly(anomalyId) {
   }
 }
 
-// Upload image and analyze
 export async function analyzeImage(imageUrl, fieldId) {
   if (USE_MOCK_DATA) {
-    // Simulate delay for realism
     return new Promise(resolve => {
       setTimeout(() => resolve(MOCK_ANOMALY), 1000);
     });
   }
-  
   try {
     const response = await api.post('/api/analyze', {
       image_url: imageUrl,

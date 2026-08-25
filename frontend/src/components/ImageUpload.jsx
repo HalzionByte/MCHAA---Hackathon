@@ -8,19 +8,17 @@ export default function ImageUpload({ fieldId, onAnalyzeComplete }) {
 
   const handleAnalyze = async (e) => {
     e.preventDefault();
-    if (!imageUrl) {
+    if (!imageUrl.trim()) {
       setError('Please enter an image URL');
       return;
     }
-
     setLoading(true);
     setError(null);
-
     try {
       const result = await analyzeImage(imageUrl, fieldId);
-      onAnalyzeComplete(result.anomaly_id);
+      onAnalyzeComplete?.(result.anomaly_id);
     } catch (err) {
-      setError('Failed to analyze image');
+      setError('Failed to analyze image. Check console for details.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -28,26 +26,22 @@ export default function ImageUpload({ fieldId, onAnalyzeComplete }) {
   };
 
   return (
-    <div className="glass p-6 rounded-lg">
-      <h3>Upload Field Image</h3>
-      <form onSubmit={handleAnalyze}>
+    <div className="glass p-5">
+      <h3 className="card-title">Upload Field Image</h3>
+      <form onSubmit={handleAnalyze} className="space-y-3">
         <input
           type="text"
-          placeholder="Image URL"
+          placeholder="https://example.com/field-image.jpg"
           value={imageUrl}
           onChange={(e) => setImageUrl(e.target.value)}
           disabled={loading}
-          className="w-full p-3 rounded-md border var(--card-border) focus:outline-none focus:ring-2 focus:ring-emerald"
+          className="input-field"
         />
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-4 px-6 py-3 rounded-md font-medium transition-colors"
-        >
+        <button type="submit" disabled={loading} className="btn-primary w-full">
           {loading ? 'Analyzing...' : 'Analyze Image'}
         </button>
+        {error && <p className="text-sm text-red-400">{error}</p>}
       </form>
-      {error && <p className="mt-4 text-error">{error}</p>}
     </div>
   );
 }

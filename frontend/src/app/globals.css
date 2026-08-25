@@ -1,0 +1,109 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-main: #0B0F17;
+  --card-surface: #161D2A;
+  --card-border: #263346;
+  --emerald: #10B981;
+  --amber: #F59E0B;
+  --crimson: #EF4444;
+  --cyan: #06B6D4;
+  --text-primary: #F8FAFC;
+  --text-muted: #94A3B8;
+}
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.glass {
+  background: rgba(22, 29, 42, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+}
+
+.severity-low { color: var(--emerald); }
+.severity-medium { color: var(--amber); }
+.severity-high { color: var(--crimson); }
+
+.bento-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) { .bento-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .bento-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.btn-primary {
+  background: var(--emerald);
+  color: var(--bg-main);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.btn-primary:hover:not(:disabled) { opacity: 0.9; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.input-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--card-surface);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+.input-field:focus { outline: none; border-color: var(--emerald); box-shadow: 0 0 0 2px rgba(16,185,129,0.2); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-alert { background: rgba(239,68,68,0.15); color: var(--crimson); }
+.badge-healthy { background: rgba(16,185,129,0.15); color: var(--emerald); }
+.badge-urgent { background: rgba(239,68,68,0.15); color: var(--crimson); }
+.badge-high { background: rgba(245,158,11,0.15); color: var(--amber); }
+.badge-medium { background: rgba(16,185,129,0.15); color: var(--emerald); }
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+.stat-label { color: var(--text-muted); font-size: 0.875rem; }
+.stat-value { font-weight: 600; }
+
+.progress-bar {
+  height: 8px;
+  background: var(--card-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; transition: width 0.3s ease; }
