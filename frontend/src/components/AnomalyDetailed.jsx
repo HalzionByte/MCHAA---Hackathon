@@ -43,7 +43,11 @@ export default function AnomalyDetailed({ anomalyId }) {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div>
             <span className="badge badge-alert">Active</span>
-            <span className="badge" style={{ background: `${severityColor}15`, color: severityColor }}>
+            <span className="badge" style={{ 
+              background: severityColor === 'var(--crimson)' ? 'rgba(239,68,68,0.15)' : 
+                         severityColor === 'var(--amber)' ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)',
+              color: severityColor 
+            }}>
               {severityLabel} ({(severity * 100).toFixed(0)}%)
             </span>
           </div>

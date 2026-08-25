@@ -2,16 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { getField } from '../api/api';
-
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
 
 function AnomalyMarkers({ anomalies }) {
   return anomalies?.map((anomaly) => (
@@ -36,6 +28,7 @@ function AnomalyMarkers({ anomalies }) {
 
 export default function FieldMap({ fieldId }) {
   const [field, setField] = useState(null);
+  const [iconsReady, setIconsReady] = useState(false);
 
   useEffect(() => {
     async function loadField() {
@@ -49,6 +42,18 @@ export default function FieldMap({ fieldId }) {
     loadField();
   }, [fieldId]);
 
+  useEffect(() => {
+    if (!iconsReady) {
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+      setIconsReady(true);
+    }
+  }, [iconsReady]);
+
   if (!field) return <div className="glass p-8 text-center text-muted">Loading field map...</div>;
 
   const center = field.boundary ? [field.boundary.lat, field.boundary.lng] : [31.5204, 74.3587];
@@ -60,7 +65,7 @@ export default function FieldMap({ fieldId }) {
         <MapContainer center={center} zoom={14} scrollWheelZoom={true} className="h-full w-full">
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
           />
           {field.boundary && (
             <Circle

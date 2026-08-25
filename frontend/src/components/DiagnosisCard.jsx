@@ -1,6 +1,9 @@
 export default function DiagnosisCard({ diagnosis }) {
-  const severityClass = diagnosis.confidence > 0.7 ? 'severity-high' : 
-                       diagnosis.confidence > 0.3 ? 'severity-medium' : 'severity-low';
+  const confidence = diagnosis.confidence;
+  const severityClass = confidence > 0.7 ? 'severity-high' : 
+                       confidence > 0.3 ? 'severity-medium' : 'severity-low';
+  const progressColor = confidence > 0.7 ? 'var(--crimson)' : 
+                       confidence > 0.3 ? 'var(--amber)' : 'var(--emerald)';
 
   return (
     <div className="glass p-5">
@@ -11,13 +14,13 @@ export default function DiagnosisCard({ diagnosis }) {
         <div className="flex justify-between text-sm mb-1">
           <span className="text-muted">Confidence</span>
           <span className={severityClass} font-medium>
-            {(diagnosis.confidence * 100).toFixed(0)}%
+            {(confidence * 100).toFixed(0)}%
           </span>
         </div>
         <div className="progress-bar">
           <div 
             className="progress-fill" 
-            style={{ width: `${diagnosis.confidence * 100}%`, backgroundColor: 'var(--emerald)' }}
+            style={{ width: `${confidence * 100}%`, backgroundColor: progressColor }}
           ></div>
         </div>
       </div>

@@ -14,7 +14,7 @@ export default function AnomalyPage() {
   return (
     <div className="max-w-6xl mx-auto p-6">
       <button 
-        onClick={() => router.back()}
+        onClick={() => window.history.back()}
         className="mb-4 text-sm text-muted hover:text-primary transition-colors"
       >
         ← Back to Field
