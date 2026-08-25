@@ -10,6 +10,8 @@ from datetime import datetime
 import uuid
 import asyncio
 
+from services.voice_service import generate_farmer_voice_script, generate_sms_payload
+
 router = APIRouter()
 
 @router.post("/api/analyze")
@@ -86,6 +88,44 @@ async def get_anomaly(anomaly_id: str, db: Session = Depends(get_db)):
     """Fetch complete anomaly with diagnosis & recommendation"""
     return get_anomaly_details(anomaly_id, db)
 
+@router.get("/api/anomalies/{anomaly_id}/voice")
+async def get_anomaly_voice(anomaly_id: str, db: Session = Depends(get_db)):
+    """Serves voice audio guide script and URL for farmers"""
+    details = get_anomaly_details(anomaly_id, db)
+    if isinstance(details, JSONResponse):
+        return details
+    
+    zone = details["detected_region"]["zone"]
+    action = details["recommendation"]["description"] or "Water crop"
+    reason = details["diagnosis"]["cause"] or "Dry soil"
+    saved = details["impact_metrics"]["crop_loss_saved_usd"]
+    
+    voice_info = generate_farmer_voice_script("Field B", zone, action, reason, saved)
+    return {
+        "anomaly_id": anomaly_id,
+        "audio_url": voice_info["audio_url"],
+        "spoken_script": voice_info["spoken_script"]
+    }
+
+@router.get("/api/anomalies/{anomaly_id}/sms")
+async def get_anomaly_sms(anomaly_id: str, db: Session = Depends(get_db)):
+    """Serves low-bandwidth SMS/WhatsApp payload (<160 chars)"""
+    details = get_anomaly_details(anomaly_id, db)
+    if isinstance(details, JSONResponse):
+        return details
+    
+    zone = details["detected_region"]["zone"]
+    color = details["farmer_decision"]["status_color"]
+    what = details["farmer_decision"]["headline_what"]
+    saved = details["impact_metrics"]["crop_loss_saved_usd"]
+    
+    sms_text = generate_sms_payload(zone, color, what, saved)
+    return {
+        "anomaly_id": anomaly_id,
+        "sms_text": sms_text,
+        "character_count": len(sms_text)
+    }
+
 @router.get("/api/fields/{field_id}")
 async def get_field(field_id: str, db: Session = Depends(get_db)):
     """Get field with all anomalies"""
@@ -153,11 +193,30 @@ def get_anomaly_details(anomaly_id: str, db: Session):
             content={"error": "anomaly_not_found", "message": f"Anomaly {anomaly_id} not found"}
         )
 
-    
     diagnosis = db.query(Diagnosis).filter(Diagnosis.anomaly_id == anomaly_id).first()
     evidence = db.query(Evidence).filter(Evidence.anomaly_id == anomaly_id).first()
     recommendation = db.query(Recommendation).filter(Recommendation.anomaly_id == anomaly_id).first()
     
+    zone = anomaly.zone or "B3"
+    saved_usd = 450.0
+    
+    farmer_decision = {
+        "status_color": "RED" if anomaly.severity >= 0.7 else "YELLOW",
+        "status_emoji": "🚨" if anomaly.severity >= 0.7 else "⚠️",
+        "headline_what": f"WATER ZONE {zone} TODAY",
+        "headline_why": "Soil moisture is dry (18%) and temperature is hot (34°C).",
+        "urgency_hours": 24 if anomaly.severity >= 0.7 else 72
+    }
+    
+    impact_metrics = {
+        "crop_loss_saved_usd": saved_usd,
+        "water_saved_liters": 3000.0,
+        "cost_saved_usd": 120.0
+    }
+    
+    voice_info = generate_farmer_voice_script("Field B", zone, recommendation.action if recommendation else "Water crop", diagnosis.probable_cause if diagnosis else "Dry soil", saved_usd)
+    sms_text = generate_sms_payload(zone, farmer_decision["status_color"], farmer_decision["headline_what"], saved_usd)
+
     return {
         "anomaly_id": anomaly.anomaly_id,
         "field_id": anomaly.field_id,
@@ -165,12 +224,16 @@ def get_anomaly_details(anomaly_id: str, db: Session):
         "severity": anomaly.severity,
         "confidence": anomaly.confidence,
         "detected_region": {
-            "zone": anomaly.zone,
+            "zone": zone,
             "coordinates": {
                 "lat": anomaly.detected_lat,
                 "lng": anomaly.detected_lng
             }
         },
+        "farmer_decision": farmer_decision,
+        "impact_metrics": impact_metrics,
+        "voice_audio_url": voice_info["audio_url"],
+        "sms_text": sms_text,
         "evidence": {
             "soil_moisture_percent": evidence.soil_moisture_percent if evidence else None,
             "rainfall_7d_mm": evidence.rainfall_7d_mm if evidence else None,

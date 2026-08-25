@@ -7,6 +7,32 @@ class ErrorResponseSchema(BaseModel):
     error: str
     message: str
 
+# ===== Farmer Decision =====
+class FarmerDecisionSchema(BaseModel):
+    status_color: str  # RED, YELLOW, GREEN
+    status_emoji: str  # 🚨, ⚠️, ✅
+    headline_what: str
+    headline_why: str
+    urgency_hours: int
+
+# ===== Impact Metrics =====
+class ImpactMetricsSchema(BaseModel):
+    crop_loss_saved_usd: float
+    water_saved_liters: float
+    cost_saved_usd: float
+
+# ===== Voice Response =====
+class VoiceResponseSchema(BaseModel):
+    anomaly_id: str
+    audio_url: str
+    spoken_script: str
+
+# ===== SMS Response =====
+class SMSResponseSchema(BaseModel):
+    anomaly_id: str
+    sms_text: str
+    character_count: int
+
 # ===== Evidence =====
 class EvidenceSchema(BaseModel):
     soil_moisture_percent: Optional[float] = None
@@ -50,6 +76,10 @@ class AnomalyResponseSchema(BaseModel):
     severity: float
     confidence: float
     detected_region: DetectedRegionSchema
+    farmer_decision: FarmerDecisionSchema
+    impact_metrics: ImpactMetricsSchema
+    voice_audio_url: str
+    sms_text: str
     evidence: EvidenceSchema
     diagnosis: DiagnosisSchema
     recommendation: RecommendationSchema
@@ -57,6 +87,7 @@ class AnomalyResponseSchema(BaseModel):
     
     class Config:
         from_attributes = True
+
 
 # ===== Analyze Request =====
 class AnalyzeRequestSchema(BaseModel):
