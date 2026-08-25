@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
-import HeatmapOverlay from 'leaflet.heat';
+import heatLayer from 'leaflet.heat';
 
 export default function AnomalyHeatmap({ anomalies }) {
   const map = useMap();
@@ -13,10 +13,10 @@ export default function AnomalyHeatmap({ anomalies }) {
     const heatData = anomalies.map((a) => [
       a.detected_region.coordinates.lat,
       a.detected_region.coordinates.lng,
-      a.severity * a.confidence
+      a.severity * (a.confidence || 0.8)
     ]);
 
-    const heat = HeatmapOverlay.heatLayer(heatData, {
+    const heat = heatLayer(heatData, {
       radius: 35,
       blur: 25,
       maxZoom: 15,

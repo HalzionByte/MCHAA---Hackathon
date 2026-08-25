@@ -44,6 +44,7 @@ export const MOCK_FIELD = {
       anomaly_id: "anom-001",
       anomaly_type: "water_stress",
       severity: 0.85,
+      confidence: 0.87,
       detected_region: {
         zone: "B3",
         coordinates: {
