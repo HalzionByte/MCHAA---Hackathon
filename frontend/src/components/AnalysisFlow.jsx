@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, Loader2, Image as ImageIcon, Search, Brain, AlertTriangle } from 'lucide-react';
+import { analyzeImage } from '../api/api';
 
 const steps = [
   { id: 'upload', label: 'Upload', icon: ImageIcon, desc: 'Select field image' },
@@ -70,32 +71,21 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
     }
 
     try {
-      let result;
-      if (imageFile) {
-        const formData = new FormData();
-        formData.append('image', imageFile);
-        formData.append('field_id', fieldId);
-        
-        const response = await fetch('/api/analyze', {
-          method: 'POST',
-          body: formData,
-        });
-        result = await response.json();
-      } else {
-        const mockUrl = imagePreview;
-        const response = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_url: mockUrl, field_id: fieldId }),
-        });
-        result = await response.json();
-      }
+      const imageUrl = imageFile ? URL.createObjectURL(imageFile) : imagePreview;
+      const result = await analyzeImage(imageUrl, fieldId);
 
       setCurrentStep(3);
       await new Promise(r => setTimeout(r, 800));
-      onComplete(result.anomaly_id);
+
+      if (result?.anomaly_id) {
+        onComplete(result.anomaly_id);
+      } else {
+        setError('Analysis returned unexpected result. Please try again.');
+        setCurrentStep(0);
+      }
     } catch (err) {
       setError('Analysis failed. Please try again.');
+      setCurrentStep(0);
       console.error(err);
     }
   };
@@ -122,7 +112,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
             <h2 className="text-xl font-semibold">Analyze Field Image</h2>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-[var(--card-surface)] transition-colors text-muted hover:text-primary"
+              className="p-2 rounded-lg hover:bg-[var(--card-surface)] transition-colors text-muted hover:text-[var(--text-primary)]"
             >
               <X className="w-5 h-5" />
             </button>
@@ -149,7 +139,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                   >
                     {i < currentStep ? <Check className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
                   </div>
-                  <span className={`text-xs font-medium mt-1 ${i <= currentStep ? 'text-primary' : 'text-muted'}`}>
+                  <span className={`text-xs font-medium mt-1 ${i <= currentStep ? 'text-[var(--text-primary)]' : 'text-muted'}`}>
                     {step.label}
                   </span>
                 </motion.div>
@@ -162,7 +152,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
               {currentStep === 0 && (
                 <motion.div key="upload" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                   <p className="text-muted text-center mb-4">Drop a field image or select from samples</p>
-                  
+
                   <div
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
@@ -186,7 +176,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                   </div>
 
                   {imagePreview && (
-                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative">
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative mt-4">
                       <img src={imagePreview} alt="Preview" className="w-full max-h-64 object-cover rounded-lg" />
                       <button
                         onClick={() => { setImageFile(null); setImagePreview(null); }}
@@ -197,8 +187,8 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                     </motion.div>
                   )}
 
-                  <p className="text-xs text-muted text-center">or choose a sample:</p>
-                  <div className="flex gap-2 justify-center flex-wrap">
+                  <p className="text-xs text-muted text-center mt-4">or choose a sample:</p>
+                  <div className="flex gap-2 justify-center flex-wrap mt-2">
                     {sampleImages.map((img) => (
                       <button
                         key={img.id}

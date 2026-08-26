@@ -176,7 +176,7 @@ export default function FieldMap({ fieldId }) {
           )}
           {showHeatmap && <AnomalyHeatmap anomalies={field.anomalies} />}
           {showMarkers && <AnomalyMarkers anomalies={field.anomalies} onPulseAnomalyId={pulseAnomalyId} />}
-          <MapLegend anomalies={field.anomalies} />
+          <MapLegend />
         </MapContainer>
       </div>
     </div>

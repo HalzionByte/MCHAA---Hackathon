@@ -5,7 +5,7 @@ export default function ConfidenceRing({ value, size = 64, strokeWidth = 6 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - value);
-  const color = value > 0.7 ? 'var(--crimson)' : value > 0.3 ? 'var(--amber)' : 'var(--emerald)';
+  const color = value > 0.7 ? 'var(--emerald)' : value > 0.3 ? 'var(--amber)' : 'var(--crimson)';
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size}>

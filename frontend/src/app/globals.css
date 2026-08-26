@@ -1,9 +1,12 @@
-@import 'leaflet/dist/leaflet.css';
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@theme inline {
+  --font-sans: var(--font-inter);
+  --color-emerald: #10B981;
+  --color-amber: #F59E0B;
+  --color-crimson: #EF4444;
+  --color-cyan: #06B6D4;
 }
 
 :root {
@@ -19,20 +22,12 @@
 }
 
 html, body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background-color: var(--bg-main);
   color: var(--text-primary);
   line-height: 1.6;
 }
 
 a { color: inherit; text-decoration: none; }
-
-.text-primary { color: var(--text-primary); }
-.text-muted { color: var(--text-muted); }
-.text-emerald { color: var(--emerald); }
-.text-amber { color: var(--amber); }
-.text-crimson { color: var(--crimson); }
-.text-cyan { color: var(--cyan); }
 
 .glass {
   background: rgba(22, 29, 42, 0.7);
@@ -117,38 +112,26 @@ a { color: inherit; text-decoration: none; }
 }
 .progress-fill { height: 100%; transition: width 0.3s ease; }
 
-/* Leaflet map fixes */
 .leaflet-container { font-family: inherit; }
 .leaflet-popup-content-wrapper { background: var(--card-surface); color: var(--text-primary); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
 .leaflet-popup-content { margin: 8px 12px; }
 .leaflet-popup-tip { background: var(--card-surface); }
 
-/* Elevation system */
-.elevation-1 { box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2); }
 .elevation-2 { box-shadow: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2); }
 .elevation-3 { box-shadow: 0 10px 15px rgba(0,0,0,0.3), 0 4px 6px rgba(0,0,0,0.2); }
-.elevation-4 { box-shadow: 0 20px 25px rgba(0,0,0,0.4), 0 10px 10px rgba(0,0,0,0.2); }
 
-/* Glass variants */
-.glass-strong { background: rgba(22,29,42,0.85); backdrop-filter: blur(12px); }
-.glass-subtle { background: rgba(22,29,42,0.5); backdrop-filter: blur(6px); }
+.glass-strong { background: rgba(22,29,42,0.85); backdrop-filter: blur(12px); border: 1px solid var(--card-border); border-radius: 12px; }
 
-/* Cyan accent utilities */
-.text-cyan { color: var(--cyan); }
-.border-cyan { border-color: var(--cyan); }
-.bg-cyan\/10 { background: rgba(6,182,212,0.1); }
+.hover\:elevation-3:hover { box-shadow: 0 10px 15px rgba(0,0,0,0.3), 0 4px 6px rgba(0,0,0,0.2); }
 
-/* Pulse animation */
 @keyframes pulse-cyan {
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(6,182,212,0.4); }
   50% { opacity: 0.7; box-shadow: 0 0 0 8px rgba(6,182,212,0); }
 }
 .animate-pulse-cyan { animation: pulse-cyan 2s ease-in-out infinite; }
 
-/* Focus ring */
 *:focus-visible { outline: 2px solid var(--emerald); outline-offset: 2px; }
 
-/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

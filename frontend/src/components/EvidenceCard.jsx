@@ -1,9 +1,12 @@
 "use client";
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Sparkline from './UI/Sparkline';
-import { getTelemetryHistory } from '../api/api';
+import { getAllTelemetryHistory } from '../api/api';
 
 export default function EvidenceCard({ evidence, fieldId }) {
+  const [sparkData, setSparkData] = useState({});
+
   const metrics = [
     { label: 'Soil Moisture', value: `${evidence.soil_moisture_percent}%`, unit: '%', key: 'soil_moisture', color: 'var(--cyan)' },
     { label: 'Rainfall (7d)', value: `${evidence.rainfall_7d_mm} mm`, unit: 'mm', key: 'rainfall', color: 'var(--emerald)' },
@@ -12,11 +15,28 @@ export default function EvidenceCard({ evidence, fieldId }) {
     { label: 'NDVI Change', value: `${evidence.vegetation_ndvi_change > 0 ? '+' : ''}${evidence.vegetation_ndvi_change}`, unit: 'NDVI', key: 'ndvi', color: 'var(--emerald)' },
   ];
 
+  useEffect(() => {
+    if (!fieldId) return;
+    let cancelled = false;
+    async function load() {
+      const history = await getAllTelemetryHistory(fieldId);
+      if (!cancelled && history?.length) {
+        const data = {};
+        for (const m of metrics) {
+          data[m.key] = history.map(d => d[m.key]);
+        }
+        setSparkData(data);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [fieldId]);
+
   return (
-    <div className="glass elevation-2 p-5 hover:elevation-3 transition-shadow duration-300">
+    <div className="glass elevation-2 p-5 hover\:elevation-3 transition-shadow duration-300">
       <h3 className="card-title flex items-center gap-2">
         Environmental Evidence
-        <span className="text-xs badge bg-cyan\/10 text-cyan animate-pulse-cyan">LIVE</span>
+        <span className="text-xs badge bg-cyan/10 text-cyan animate-pulse-cyan">LIVE</span>
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
         {metrics.map((m, i) => (
@@ -33,7 +53,7 @@ export default function EvidenceCard({ evidence, fieldId }) {
             </div>
             <div className="flex items-end justify-between gap-2">
               <span className="text-2xl font-bold tabular-nums">{m.value}</span>
-              <Sparkline data={getTelemetryHistory(fieldId, m.key)} color={m.color} />
+              <Sparkline data={sparkData[m.key] || []} color={m.color} />
             </div>
           </motion.div>
         ))}

@@ -15,7 +15,7 @@ export default function RecommendationCard({ recommendation }) {
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="glass elevation-2 p-5 relative overflow-hidden hover:elevation-3 transition-all duration-300"
+      className="glass elevation-2 p-5 relative overflow-hidden hover\:elevation-3 transition-all duration-300"
       style={{ borderLeft: `4px solid ${config.color}` }}
     >
       <div className="absolute top-0 right-0 m-3">

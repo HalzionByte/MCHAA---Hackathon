@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useRouter } from 'next/navigation';
-import FieldMap from '../../../components/FieldMap';
+import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import AnalysisFlow from '../../../components/AnalysisFlow';
+
+const FieldMap = dynamic(() => import('../../../components/FieldMap'), { ssr: false });
 
 export default function FieldPage() {
   const { fieldId } = useParams();
@@ -28,11 +29,13 @@ export default function FieldPage() {
         </button>
       </div>
       <FieldMap fieldId={fieldId} />
-      <AnalysisFlow
-        fieldId={fieldId}
-        onComplete={handleAnalyzeComplete}
-        onClose={() => setShowAnalysis(false)}
-      />
+      {showAnalysis && (
+        <AnalysisFlow
+          fieldId={fieldId}
+          onComplete={handleAnalyzeComplete}
+          onClose={() => setShowAnalysis(false)}
+        />
+      )}
     </div>
   );
 }
