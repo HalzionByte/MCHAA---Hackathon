@@ -1,11 +1,28 @@
-# Hackathon Sprint Plan (4 Days, Ultra-Safe MVP)
+# Hackathon Sprint Plan (4 Days, Tier 1 Farmer-First Strategy)
 
 **Start:** Day 1 (Monday morning)  
 **End:** Day 4 (Thursday evening)  
 **Team:** 4 people (You: Design/Lead, Frontend, Backend, Backend Support)  
-**Goal:** Fully functional end-to-end demo by Day 4 evening
+**Goal:** High-impact, Farmer-First decision platform built for Regional Victory
 
 ---
+
+## 🎯 Winning Strategy & Judging Alignment
+
+### Official Hackathon Winning Signal:
+> *"The farmer knows what to do next — and why."*
+
+### The 4 Extension Path Pillars:
+1. **01. Crop, Region & Decision Focus:** Wheat in Zone B3, single-click decision.
+2. **02. Minimum Farmer Effort:** Image upload / location selection without tedious forms.
+3. **03. Farmer-First Channels:** 
+   - 🔴 Visual Traffic Light System (RED / YELLOW / GREEN)
+   - 🔊 Audio Voice Guide Endpoint (`POST /api/anomalies/{id}/voice`)
+   - 📱 Low-Bandwidth SMS / WhatsApp Payload (`GET /api/anomalies/{id}/sms`)
+4. **04. Impact & Loss Validation:** `$ Saved` and `Liters Water Saved` calculator built into backend response.
+
+---
+
 
 ## Phase 0: Pre-Hackathon (Before Day 1)
 
