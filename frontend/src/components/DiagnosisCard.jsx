@@ -2,37 +2,43 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfidenceRing from './UI/ConfidenceRing';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Brain } from 'lucide-react';
 
 export default function DiagnosisCard({ diagnosis }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="glass elevation-2 p-5 hover\:elevation-3 transition-shadow duration-300">
-      <h3 className="card-title">Diagnosis</h3>
-      <div className="flex items-start gap-6">
-        <ConfidenceRing value={diagnosis.confidence} size={72} />
+    <div className="glass-card p-5">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)] mb-4 pb-3 border-b border-[var(--card-border)]">
+        <Brain className="w-4 h-4 text-[var(--cyan)]" />
+        AI Diagnosis
+      </h3>
+      <div className="flex items-center gap-6">
+        <div className="flex-shrink-0">
+          <ConfidenceRing value={diagnosis.confidence} size={72} />
+        </div>
         <div className="flex-1 min-w-0">
-          <p className="text-muted mb-4">{diagnosis.cause}</p>
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed">{diagnosis.cause}</p>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 text-sm text-cyan hover:text-[var(--emerald)] transition-colors mb-4"
+            className="flex items-center gap-1.5 text-sm text-[var(--cyan)] hover:text-[var(--emerald)] transition-colors mt-3"
           >
-            {expanded ? 'Hide reasoning' : 'Show reasoning'} <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            {expanded ? 'Hide reasoning' : 'Show reasoning'}
+            <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </button>
-          <AnimatePresence>
-            {expanded && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="text-sm text-muted bg-[var(--card-surface)] p-3 rounded-lg border border-[var(--card-border)]"
-              >
-                {diagnosis.reasoning}
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </div>
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-4 text-sm text-[var(--text-muted)] bg-[var(--bg-main)]/60 p-4 rounded-lg border border-[var(--card-border)] leading-relaxed"
+          >
+            {diagnosis.reasoning}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

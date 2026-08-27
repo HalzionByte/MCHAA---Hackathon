@@ -3,27 +3,45 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Sparkline from './UI/Sparkline';
 import { getAllTelemetryHistory } from '../api/api';
+import { Droplets, CloudRain, Thermometer, Wind, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+
+const metricConfigs = [
+  { label: 'Soil Moisture', unit: '%', key: 'soil_moisture', color: 'var(--cyan)', Icon: Droplets },
+  { label: 'Rainfall (7d)', unit: 'mm', key: 'rainfall', color: 'var(--emerald)', Icon: CloudRain },
+  { label: 'Temperature', unit: '°C', key: 'temperature', color: 'var(--amber)', Icon: Thermometer },
+  { label: 'Humidity', unit: '%', key: 'humidity', color: 'var(--cyan)', Icon: Wind },
+];
 
 export default function EvidenceCard({ evidence, fieldId }) {
   const [sparkData, setSparkData] = useState({});
 
+  const ndviConfig = {
+    label: 'NDVI Change',
+    value: `${evidence.vegetation_ndvi_change > 0 ? '+' : ''}${evidence.vegetation_ndvi_change}`,
+    unit: 'NDVI',
+    key: 'ndvi',
+    color: evidence.vegetation_ndvi_change >= 0 ? 'var(--emerald)' : 'var(--crimson)',
+    Icon: evidence.vegetation_ndvi_change >= 0 ? TrendingUp : TrendingDown,
+  };
+
   const metrics = [
-    { label: 'Soil Moisture', value: `${evidence.soil_moisture_percent}%`, unit: '%', key: 'soil_moisture', color: 'var(--cyan)' },
-    { label: 'Rainfall (7d)', value: `${evidence.rainfall_7d_mm} mm`, unit: 'mm', key: 'rainfall', color: 'var(--emerald)' },
-    { label: 'Temperature', value: `${evidence.temperature_c}°C`, unit: '°C', key: 'temperature', color: 'var(--amber)' },
-    { label: 'Humidity', value: `${evidence.humidity_percent}%`, unit: '%', key: 'humidity', color: 'var(--cyan)' },
-    { label: 'NDVI Change', value: `${evidence.vegetation_ndvi_change > 0 ? '+' : ''}${evidence.vegetation_ndvi_change}`, unit: 'NDVI', key: 'ndvi', color: 'var(--emerald)' },
+    { ...metricConfigs[0], value: `${evidence.soil_moisture_percent}%` },
+    { ...metricConfigs[1], value: `${evidence.rainfall_7d_mm} mm` },
+    { ...metricConfigs[2], value: `${evidence.temperature_c}°C` },
+    { ...metricConfigs[3], value: `${evidence.humidity_percent}%` },
+    ndviConfig,
   ];
 
   useEffect(() => {
     if (!fieldId) return;
     let cancelled = false;
+    const sparkKeys = ['soil_moisture', 'rainfall', 'temperature', 'humidity', 'ndvi'];
     async function load() {
       const history = await getAllTelemetryHistory(fieldId);
       if (!cancelled && history?.length) {
         const data = {};
-        for (const m of metrics) {
-          data[m.key] = history.map(d => d[m.key]);
+        for (const key of sparkKeys) {
+          data[key] = history.map(d => d[key]);
         }
         setSparkData(data);
       }
@@ -33,30 +51,49 @@ export default function EvidenceCard({ evidence, fieldId }) {
   }, [fieldId]);
 
   return (
-    <div className="glass elevation-2 p-5 hover\:elevation-3 transition-shadow duration-300">
-      <h3 className="card-title flex items-center gap-2">
+    <div className="glass-card p-5">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)] mb-4 pb-3 border-b border-[var(--card-border)]">
+        <Activity className="w-4 h-4 text-[var(--cyan)]" />
         Environmental Evidence
-        <span className="text-xs badge bg-cyan/10 text-cyan animate-pulse-cyan">LIVE</span>
+        <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-[var(--cyan)]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--cyan)] animate-pulse-cyan" />
+          LIVE
+        </span>
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-        {metrics.map((m, i) => (
-          <motion.div
-            key={m.key}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08 }}
-            className="space-y-2"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-muted text-sm">{m.label}</span>
-              <span className="text-cyan text-xs font-medium uppercase tracking-wide">{m.unit}</span>
-            </div>
-            <div className="flex items-end justify-between gap-2">
-              <span className="text-2xl font-bold tabular-nums">{m.value}</span>
-              <Sparkline data={sparkData[m.key] || []} color={m.color} />
-            </div>
-          </motion.div>
-        ))}
+      <div className="space-y-4">
+        {metrics.map((m, i) => {
+          const Icon = m.Icon;
+          return (
+            <motion.div
+              key={m.key}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08 }}
+              className="flex items-center gap-3"
+            >
+              {/* Icon */}
+              <div
+                className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg"
+                style={{ background: `${m.color}15` }}
+              >
+                <Icon className="w-4 h-4" style={{ color: m.color }} />
+              </div>
+              {/* Label + Value */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--text-muted)]">{m.label}</span>
+                  <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider" style={{ color: m.color }}>
+                    {m.unit}
+                  </span>
+                </div>
+                <div className="flex items-end justify-between gap-2 mt-0.5">
+                  <span className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{m.value}</span>
+                  <Sparkline data={sparkData[m.key] || []} color={m.color} height={28} width={64} />
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

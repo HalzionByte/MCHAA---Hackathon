@@ -6,6 +6,7 @@ import L from 'leaflet';
 import { getField } from '../api/api';
 import { getSeverityClass, getSeverityColor } from '../lib/severity';
 import AnomalyHeatmap from './AnomalyHeatmap';
+import { Flame, Map, Sprout, AlertTriangle } from 'lucide-react';
 
 function AnomalyMarkers({ anomalies, onPulseAnomalyId }) {
   return anomalies?.map((anomaly) => {
@@ -47,19 +48,19 @@ function MapLegend() {
     { label: 'Low', color: 'var(--emerald)', threshold: '< 30%' }
   ];
   return (
-    <div className="absolute bottom-4 right-4 glass p-3 rounded-lg z-10 min-w-[180px]">
-      <h4 className="font-medium mb-2">Anomaly Severity</h4>
+    <div className="absolute bottom-4 right-4 field-overlay z-10 min-w-[180px]">
+      <h4 className="font-medium mb-2 text-[var(--text-primary)]">Anomaly Severity</h4>
       <div className="space-y-2">
         {severities.map((s) => (
           <div key={s.label} className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full" style={{ background: s.color }} />
-            <span className="text-sm">{s.label} ({s.threshold})</span>
+            <div className="w-3 h-3 rounded-full" style={{ background: s.color }} />
+            <span className="text-xs text-[var(--text-muted)]">{s.label} ({s.threshold})</span>
           </div>
         ))}
         <div className="border-t border-[var(--card-border)] pt-2 mt-2">
-          <div className="flex items-center gap-2 text-sm">
-            <div className="w-4 h-4 rounded-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500" />
-            <span>Heatmap Intensity</span>
+          <div className="flex items-center gap-2 text-xs">
+            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500" />
+            <span className="text-[var(--text-muted)]">Heatmap Intensity</span>
           </div>
         </div>
       </div>
@@ -78,7 +79,6 @@ export default function FieldMap({ fieldId }) {
       try {
         const data = await getField(fieldId);
         setField(data);
-        // Pulse the most recent anomaly
         if (data?.anomalies?.length) {
           setPulseAnomalyId(data.anomalies[0].anomaly_id);
         }
@@ -98,7 +98,6 @@ export default function FieldMap({ fieldId }) {
     });
   }, []);
 
-  // Add pulse animation style
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
@@ -112,15 +111,21 @@ export default function FieldMap({ fieldId }) {
     return () => document.head.removeChild(style);
   }, []);
 
-  if (!field) return <div className="glass p-8 text-center text-muted">Loading field map...</div>;
+  if (!field) {
+    return (
+      <div className="glass-card p-8 text-center text-[var(--text-muted)]">
+        <div className="animate-spin w-8 h-8 border-2 border-[var(--cyan)] border-t-transparent rounded-full mx-auto mb-3" />
+        Loading field map...
+      </div>
+    );
+  }
 
   const center = field.boundary ? [field.boundary.lat, field.boundary.lng] : [31.5204, 74.3587];
 
-  // Generate field boundary polygon (approximate from center)
   const generateFieldPolygon = (center, radiusKm = 1.5) => {
     const points = [];
     const numPoints = 32;
-    const radiusDeg = radiusKm / 111; // rough conversion
+    const radiusDeg = radiusKm / 111;
     for (let i = 0; i < numPoints; i++) {
       const angle = (i / numPoints) * 2 * Math.PI;
       points.push([
@@ -134,32 +139,10 @@ export default function FieldMap({ fieldId }) {
   const fieldPolygon = field.boundary ? generateFieldPolygon(center) : null;
 
   return (
-    <div className="glass p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-medium">{field.name}</h3>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={showHeatmap}
-              onChange={(e) => setShowHeatmap(e.target.checked)}
-              className="rounded border-[var(--card-border)] bg-[var(--card-surface)] text-emerald-500 focus:ring-emerald-500"
-            />
-            Heatmap
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={showMarkers}
-              onChange={(e) => setShowMarkers(e.target.checked)}
-              className="rounded border-[var(--card-border)] bg-[var(--card-surface)] text-emerald-500 focus:ring-emerald-500"
-            />
-            Markers
-          </label>
-        </div>
-      </div>
-      <div className="relative h-80 w-full rounded-lg overflow-hidden">
-        <MapContainer center={center} zoom={14} scrollWheelZoom={true} className="h-full w-full">
+    <div className="glass-card p-5">
+      <div className="relative h-96 w-full rounded-lg overflow-hidden">
+        {/* Map */}
+        <MapContainer center={center} zoom={14} scrollWheelZoom={true} className="h-full w-full rounded-lg">
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
@@ -178,6 +161,40 @@ export default function FieldMap({ fieldId }) {
           {showMarkers && <AnomalyMarkers anomalies={field.anomalies} onPulseAnomalyId={pulseAnomalyId} />}
           <MapLegend />
         </MapContainer>
+
+        {/* Floating Toggle Chips (top-right) */}
+        <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2">
+          <button
+            onClick={() => setShowHeatmap(!showHeatmap)}
+            className={`map-chip ${showHeatmap ? 'map-chip-active' : ''}`}
+          >
+            <Flame className="w-3.5 h-3.5" />
+            Heatmap
+          </button>
+          <button
+            onClick={() => setShowMarkers(!showMarkers)}
+            className={`map-chip ${showMarkers ? 'map-chip-active' : ''}`}
+          >
+            <Map className="w-3.5 h-3.5" />
+            Markers
+          </button>
+        </div>
+
+        {/* Floating Field Info (bottom-left) */}
+        <div className="absolute bottom-4 left-4 z-[1000] field-overlay">
+          <div className="flex items-center gap-2">
+            <Sprout className="w-4 h-4 text-[var(--emerald)]" />
+            <span className="font-medium text-[var(--text-primary)]">{field.name}</span>
+            <span className="text-[var(--text-muted)]">·</span>
+            <span className="text-[var(--text-muted)]">{field.crop_type}</span>
+          </div>
+          {field.anomalies?.length > 0 && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-[var(--crimson)]">
+              <AlertTriangle className="w-3 h-3" />
+              {field.anomalies.length} anomaly detected
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

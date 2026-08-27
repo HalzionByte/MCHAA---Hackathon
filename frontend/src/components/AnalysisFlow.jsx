@@ -15,7 +15,7 @@ const steps = [
 const sampleImages = [
   { id: 1, url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=400', label: 'Wheat field' },
   { id: 2, url: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=400', label: 'Rice paddy' },
-  { id: 3, url: 'https://images.unsplash.com/photo-1625246264197-0a1e8b1c2b5f?w=400', label: 'Crop stress' },
+  { id: 3, url: 'https://images.unsplash.com/photo-1530507629858-e4977d30e9e0?auto=format&fit=crop&w=300&q=80', label: 'Dry crop' },
 ];
 
 export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
@@ -131,15 +131,15 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                   <div
                     className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
                       i < currentStep
-                        ? 'bg-emerald-500 border-emerald-500 text-[var(--bg-main)]'
+                        ? 'bg-[var(--cyan)] border-[var(--cyan)] text-[var(--bg-main)]'
                         : i === currentStep
-                        ? 'bg-[var(--card-surface)] border-emerald-500 text-emerald-500 ring-4 ring-emerald-500/30'
-                        : 'bg-[var(--card-surface)] border-[var(--card-border)] text-muted'
+                        ? 'bg-[var(--card-surface)] border-[var(--cyan)] text-[var(--cyan)] step-active-glow'
+                        : 'bg-[var(--card-surface)] border-[var(--card-border)] text-[var(--text-muted)]'
                     }`}
                   >
                     {i < currentStep ? <Check className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
                   </div>
-                  <span className={`text-xs font-medium mt-1 ${i <= currentStep ? 'text-[var(--text-primary)]' : 'text-muted'}`}>
+                  <span className={`text-xs font-medium mt-1 ${i <= currentStep ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>
                     {step.label}
                   </span>
                 </motion.div>
@@ -160,8 +160,8 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                     onDrop={handleDrop}
                     className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
                       dragActive
-                        ? 'border-emerald-500 bg-emerald-500/10'
-                        : 'border-[var(--card-border)] hover:border-emerald-500/50'
+                        ? 'border-[var(--cyan)] bg-[var(--cyan)]/10'
+                        : 'border-[var(--card-border)] hover:border-[var(--cyan)]/50'
                     }`}
                   >
                     <input
@@ -225,8 +225,8 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                   exit={{ opacity: 0, y: -10 }}
                   className="text-center py-8"
                 >
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/20 mb-4">
-                    <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[var(--cyan)]/20 mb-4">
+                    <Loader2 className="w-10 h-10 text-[var(--cyan)] animate-spin" />
                   </div>
                   <h3 className="text-lg font-medium mb-1">{steps[currentStep].label}</h3>
                   <p className="text-muted text-sm">{steps[currentStep].desc}</p>
@@ -234,7 +234,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                     {Array.from({ length: 5 }).map((_, i) => (
                       <motion.div
                         key={i}
-                        className="w-2 h-2 rounded-full bg-emerald-500"
+                        className="w-2 h-2 rounded-full bg-[var(--cyan)]"
                         animate={{ scale: [1, 1.5, 1], opacity: [0.4, 1, 0.4] }}
                         transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
                       />
@@ -249,7 +249,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                    className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500 mb-4"
+                    className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[var(--cyan)] mb-4"
                   >
                     <Check className="w-10 h-10 text-[var(--bg-main)]" />
                   </motion.div>
