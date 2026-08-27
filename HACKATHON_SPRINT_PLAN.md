@@ -7,6 +7,56 @@
 
 ---
 
+<<<<<<< Updated upstream
+=======
+## 🎯 Winning Strategy & Judging Alignment
+
+### Official Hackathon Winning Signal:
+> *"The farmer knows what to do next — and why."*
+
+### The 4 Extension Path Pillars:
+1. **01. Crop, Region & Decision Focus:** Wheat in Zone B3, single-click decision.
+2. **02. Minimum Farmer Effort:** Image upload / location selection without tedious forms.
+3. **03. Farmer-First Channels:** 
+   - 🔴 Visual Traffic Light System (RED / YELLOW / GREEN)
+   - 🔊 Audio Voice Guide Endpoint (`POST /api/anomalies/{id}/voice`)
+   - 📱 Low-Bandwidth SMS / WhatsApp Payload (`GET /api/anomalies/{id}/sms`)
+4. **04. Impact & Loss Validation:** `$ Saved` and `Liters Water Saved` calculator built into backend response.
+
+---
+
+## 🏆 SS-Tier International Upgrade Strategy (Alkhidmat x Bano Qabil)
+
+> **Context:** With 1,600+ competing projects nationwide, a standard functional MVP achieves Grade 2A (~20% international shortlist chance). Executing these **4 SS-Tier Upgrades** elevates the project to top-tier contention (**80%+ international shortlist chance**).
+
+### 1. ⚡ Visual "Agent Thinking" Stepper (Proves True AI Agentic Workflow)
+- **Implementation:** Next.js real-time status stepper showing tool calls as they happen:
+  - `[✓] Vision Analysis: Water Stress detected in Zone B3`
+  - `[⚙️ Tool Call] Querying Soil Sensor: 18% Moisture (Dry)`
+  - `[⚙️ Tool Call] Querying Weather API: 2mm 7-day rain, 34°C`
+  - `[🧠 Claude 3.5 Sonnet] Correlating telemetry -> Generating diagnosis`
+- **Why:** Distinguishes your app from generic LLM prompts by proving multi-tool autonomous reasoning.
+
+### 2. 🔊 Farmer-First Inclusivity (Urdu Voice & SMS Payload)
+- **Implementation:**
+  - **Urdu Audio Guide Toggle:** Native voice playback of recommendations in Urdu/Roman Urdu.
+  - **USSD/SMS Live Phone Mockup:** Visual UI preview displaying the sub-160 char payload formatted for 2G feature phones.
+- **Why:** Directly addresses Alkhidmat's social welfare mission and smallholder farmer literacy barriers.
+
+### 3. 💰 Hard Economic & Environmental Impact ROI Calculator
+- **Implementation:** Prominent metric banner on diagnosis results:
+  - 💵 **Crop Loss Saved:** `$450 / 125,000 PKR`
+  - 💧 **Water Saved:** `3,000 Liters` (via targeted zone irrigation)
+  - ⏱️ **Urgency Window:** `Action required within 24 Hours`
+- **Why:** Converts raw tech into measurable food security and financial value.
+
+### 4. 🎨 World-Class Dynamic UI & Interactive Map
+- **Implementation:** Sleek glassmorphism/dark-mode theme with an interactive field map where Zone B3 visually highlights red upon anomaly detection.
+
+---
+
+
+>>>>>>> Stashed changes
 ## Phase 0: Pre-Hackathon (Before Day 1)
 
 ### Tasks (Total: 3-4 hours)
