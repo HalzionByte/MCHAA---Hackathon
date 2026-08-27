@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Clock, CheckCircle, Flag, Droplets, Bug, Scissors, Lightbulb } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle, Droplets, Bug, Scissors, Lightbulb } from 'lucide-react';
 
 const priorityConfig = {
   1: { label: 'Urgent', icon: AlertTriangle, color: 'var(--crimson)', bg: 'rgba(239,68,68,0.15)', slaHours: 24 },
@@ -48,11 +48,6 @@ export default function RecommendationCard({ recommendation, createdAt }) {
       animate={{ opacity: 1, x: 0 }}
       className="glass-card p-5 relative overflow-hidden"
     >
-      {/* Priority Flag (top-left) */}
-      <div className="absolute top-0 left-0 w-10 h-10 flex items-center justify-center rounded-br-lg" style={{ background: config.bg }}>
-        <Flag className="w-4 h-4" style={{ color: config.color }} />
-      </div>
-
       {/* Priority Badge (top-right) */}
       <div className="absolute top-3 right-3">
         <span className="badge" style={{ background: config.bg, color: config.color }}>

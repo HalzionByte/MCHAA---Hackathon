@@ -186,7 +186,7 @@ export default function FieldMap({ fieldId }) {
             <Sprout className="w-4 h-4 text-[var(--emerald)]" />
             <span className="font-medium text-[var(--text-primary)]">{field.name}</span>
             <span className="text-[var(--text-muted)]">·</span>
-            <span className="text-[var(--text-muted)]">{field.crop_type}</span>
+            <span className="text-[var(--text-muted)]">{field.crop_type.charAt(0).toUpperCase() + field.crop_type.slice(1)}</span>
           </div>
           {field.anomalies?.length > 0 && (
             <div className="flex items-center gap-1 mt-1 text-xs text-[var(--crimson)]">

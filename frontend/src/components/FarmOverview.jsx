@@ -31,7 +31,7 @@ function FieldCard({ field }) {
           <h3 className="text-base font-semibold text-[var(--text-primary)]">{field.name}</h3>
           <span className="inline-flex items-center gap-1 mt-1 text-xs text-[var(--text-muted)]">
             <Sprout className="w-3 h-3" />
-            {field.crop_type}
+            {field.crop_type.charAt(0).toUpperCase() + field.crop_type.slice(1)}
           </span>
         </div>
         <span

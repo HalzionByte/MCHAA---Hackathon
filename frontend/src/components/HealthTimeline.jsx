@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend, ReferenceLine
+  ResponsiveContainer, ReferenceLine
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAllTelemetryHistory } from '../api/api';
@@ -38,6 +38,35 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function CustomTooltip({ active, payload, label, history }) {
+  if (!active || !payload?.length) return null;
+  const entry = history?.find(d => formatDate(d.date) === label);
+  const status = entry ? statusConfig[entry.status] || statusConfig.unknown : null;
+  const StatusIcon = status?.icon;
+  return (
+    <div className="glass-card px-3 py-2 min-w-[160px]">
+      <p className="text-xs text-[var(--text-muted)] mb-1.5">{label}</p>
+      {payload.map((p, i) => (
+        <div key={i} className="flex items-center justify-between gap-4 text-sm">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+            <span className="text-[var(--text-muted)]">{p.name}</span>
+          </span>
+          <span className="font-semibold text-[var(--text-primary)] tabular-nums">
+            {typeof p.value === 'number' ? p.value.toFixed(2) : p.value}
+          </span>
+        </div>
+      ))}
+      {status && (
+        <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-[var(--card-border)]">
+          {StatusIcon && <StatusIcon className="w-3 h-3" style={{ color: status.color }} />}
+          <span className="text-xs font-medium" style={{ color: status.color }}>{status.label}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function HealthTimeline({ fieldId }) {
   const [selectedMetrics, setSelectedMetrics] = useState(['ndvi', 'soil_moisture']);
   const [history, setHistory] = useState(null);
@@ -51,13 +80,13 @@ export default function HealthTimeline({ fieldId }) {
           setHistory([]);
           return;
         }
-        
+
         const combined = data.map((day) => {
           const record = { ...day };
           record.status = getStatus(day.ndvi);
           return record;
         });
-        
+
         setHistory(combined);
       } catch (err) {
         console.error('Failed to load history:', err);
@@ -88,57 +117,39 @@ export default function HealthTimeline({ fieldId }) {
           <Calendar className="w-5 h-5" />
           Health Timeline (Last 45 Days)
         </h3>
-        <div className="flex items-center gap-2">
-          {metricOrder.map(m => (
-            <label key={m} className="flex items-center gap-1.5 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selectedMetrics.includes(m)}
-                onChange={(e) => setSelectedMetrics(e.target.checked
-                  ? [...selectedMetrics, m]
-                  : selectedMetrics.filter(x => x !== m)
-                )}
-                className="rounded border-[var(--card-border)] bg-[var(--card-surface)] text-emerald-500 focus:ring-emerald-500"
-              />
-              <span className="flex items-center gap-1" style={{ color: metricConfig[m].color }}>
-                {(() => { const Icon = metricConfig[m].icon; return <Icon className="w-3.5 h-3.5" />; })()}
-                {metricConfig[m].label}
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Status Bar */}
-      <div className="overflow-x-auto pb-2 -mx-5 px-5">
-        <div className="flex gap-1 min-w-max" role="list" aria-label="Daily crop health status">
-          {history.map((day, i) => {
-            const status = statusConfig[day.status] || statusConfig.unknown;
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {metricOrder.map(m => {
+            const config = metricConfig[m];
+            const isActive = selectedMetrics.includes(m);
+            const Icon = config.icon;
             return (
-              <motion.div
-                key={day.date}
-                layoutId={day.date}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.02, duration: 0.3 }}
-                className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer group relative"
-                style={{ background: status.bg, border: `1px solid ${status.color}40` }}
-                role="listitem"
-                aria-label={`${formatDate(day.date)}: ${status.label}`}
+              <button
+                key={m}
+                onClick={() => setSelectedMetrics(isActive
+                  ? selectedMetrics.filter(x => x !== m)
+                  : [...selectedMetrics, m]
+                )}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border"
+                style={isActive ? {
+                  background: config.color + '18',
+                  color: config.color,
+                  borderColor: config.color + '40',
+                } : {
+                  background: 'rgba(30, 41, 59, 0.6)',
+                  color: 'var(--text-muted)',
+                  borderColor: 'rgba(51, 65, 85, 0.5)',
+                }}
               >
-                {(() => { const Icon = status.icon; return <Icon className="w-4 h-4" style={{ color: status.color }} />; })()}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ background: status.color, color: 'var(--bg-main)' }}>
-                  {formatDate(day.date)} - {status.label}
-                </div>
-              </motion.div>
+                <Icon className="w-3.5 h-3.5" />
+                {config.label}
+              </button>
             );
           })}
         </div>
       </div>
 
       {/* Charts */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {selectedMetrics.map((metricKey) => {
           const config = metricConfig[metricKey];
           const data = history.map(d => ({
@@ -191,16 +202,8 @@ export default function HealthTimeline({ fieldId }) {
                       tickFormatter={v => v.toFixed(metricKey === 'ndvi' ? 2 : 0)}
                     />
                     <Tooltip
-                      contentStyle={{
-                        background: 'var(--card-surface)',
-                        border: '1px solid var(--card-border)',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-                      }}
-                      formatter={(value /*, name */) => [value.toFixed(metricKey === 'ndvi' ? 2 : 1), config.label]}
-                      labelFormatter={v => formatDate(data.find(d => d.date === v)?.fullDate || v)}
+                      content={<CustomTooltip history={history} />}
                     />
-                    <Legend />
                     <Area
                       type="monotone"
                       dataKey="value"

@@ -27,10 +27,10 @@ export default function AnomalyHeatmap({ anomalies }) {
       maxZoom: 15,
       minOpacity: 0.3,
       gradient: {
-        0.0: '#10B981',
+        0.0: '#F59E0B',
         0.4: '#F59E0B',
         0.7: '#EF4444',
-        1.0: '#EF4444'
+        1.0: '#DC2626'
       }
     });
 

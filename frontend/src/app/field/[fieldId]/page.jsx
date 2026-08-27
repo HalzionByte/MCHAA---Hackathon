@@ -99,7 +99,7 @@ export default function FieldPage() {
             {!loading && field && (
               <p className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
                 <Sprout className="w-3.5 h-3.5" />
-                {field.crop_type} · {field.anomalies?.length || 0} active anomalies
+                {field.crop_type.charAt(0).toUpperCase() + field.crop_type.slice(1)} · {field.anomalies?.length === 1 ? '1 active anomaly' : `${field.anomalies?.length || 0} active anomalies`}
               </p>
             )}
           </div>

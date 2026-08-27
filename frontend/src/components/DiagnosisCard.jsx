@@ -13,8 +13,9 @@ export default function DiagnosisCard({ diagnosis }) {
         AI Diagnosis
       </h3>
       <div className="flex items-center gap-6">
-        <div className="flex-shrink-0">
+        <div className="flex flex-col items-center gap-1 flex-shrink-0">
           <ConfidenceRing value={diagnosis.confidence} size={72} />
+          <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Confidence</span>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm text-[var(--text-muted)] leading-relaxed">{diagnosis.cause}</p>
