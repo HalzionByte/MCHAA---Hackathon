@@ -3,11 +3,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getFarm } from '../api/api';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Sprout, MapPin, AlertTriangle, TrendingUp,
   Upload, Clock, CheckCircle2, Leaf
 } from 'lucide-react';
 import Sparkline from './UI/Sparkline';
+import AnalysisFlow from './AnalysisFlow';
 
 function generateTrendData(status) {
   const base = status === 'alert' ? 0.45 : 0.72;
@@ -99,8 +101,10 @@ function getNdviColor(ndvi) {
 }
 
 export default function FarmOverview({ farmId }) {
+  const router = useRouter();
   const [farm, setFarm] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   useEffect(() => {
     async function loadFarm() {
@@ -184,13 +188,13 @@ export default function FarmOverview({ farmId }) {
           </div>
 
           {/* Right: CTA */}
-          <Link
-            href={`/field/${farm.fields?.[0]?.field_id || 'field-001'}`}
+          <button
+            onClick={() => setShowAnalysis(true)}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--emerald)] text-[var(--bg-main)] font-semibold text-sm hover:opacity-90 transition-opacity whitespace-nowrap"
           >
             <Upload className="w-4 h-4" />
             Upload & Analyze
-          </Link>
+          </button>
         </div>
       </header>
 
@@ -203,6 +207,18 @@ export default function FarmOverview({ farmId }) {
           ))}
         </div>
       </div>
+
+      {/* Analysis Modal */}
+      {showAnalysis && (
+        <AnalysisFlow
+          fieldId={farm.fields?.[0]?.field_id || 'field-001'}
+          onComplete={(anomalyId) => {
+            setShowAnalysis(false);
+            router.push(`/anomaly/${anomalyId}`);
+          }}
+          onClose={() => setShowAnalysis(false)}
+        />
+      )}
     </div>
   );
 }

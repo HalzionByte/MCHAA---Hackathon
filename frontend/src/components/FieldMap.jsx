@@ -31,7 +31,7 @@ function AnomalyMarkers({ anomalies, onPulseAnomalyId }) {
         position={[coords.lat, coords.lng]}
         icon={L.divIcon({
           className: `anomaly-marker ${isPulsing ? 'pulsing' : ''}`,
-          html: `<div style="width: 16px; height: 16px; border-radius: 50%; background: ${severityColor}; border: 3px solid var(--bg-main); box-shadow: 0 0 12px ${severityColor};${isPulsing ? ' animation: pulse-marker 1.5s ease-in-out infinite;' : ''}"></div>`,
+          html: `<div style="width: 16px; height: 16px; border-radius: 50%; background: ${severityColor}; box-shadow: 0 0 0 3px var(--bg-main), 0 0 12px ${severityColor};${isPulsing ? ' animation: pulse-marker 1.5s ease-in-out infinite;' : ''}"></div>`,
           iconSize: [16, 16],
           iconAnchor: [8, 8]
         })}
@@ -153,10 +153,11 @@ export default function FieldMap({ fieldId }) {
     <div className="glass-card p-5">
       <div className="relative h-96 w-full rounded-lg overflow-hidden">
         {/* Map */}
-        <MapContainer center={center} zoom={14} scrollWheelZoom={true} className="h-full w-full rounded-lg">
+        <MapContainer center={center} zoom={14} maxZoom={20} scrollWheelZoom={true} className="h-full w-full rounded-lg">
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            maxZoom={20}
           />
           {fieldPolygon && (
             <Polygon

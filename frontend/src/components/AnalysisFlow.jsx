@@ -24,6 +24,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
   const [imagePreview, setImagePreview] = useState(null);
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [completedAnomalyId, setCompletedAnomalyId] = useState(null);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -78,7 +79,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
       await new Promise(r => setTimeout(r, 800));
 
       if (result?.anomaly_id) {
-        onComplete(result.anomaly_id);
+        setCompletedAnomalyId(result.anomaly_id);
       } else {
         setError('Analysis returned unexpected result. Please try again.');
         setCurrentStep(0);
@@ -256,7 +257,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                   <h3 className="text-xl font-bold mb-2">Analysis Complete</h3>
                   <p className="text-muted mb-6">Anomaly detected and diagnosed successfully</p>
                   <button
-                    onClick={() => onClose()}
+                    onClick={() => onComplete(completedAnomalyId)}
                     className="btn-primary px-8"
                   >
                     View Results
