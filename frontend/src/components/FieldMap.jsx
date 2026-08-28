@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polygon } from 'react-leaflet';
-import L from 'leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, Polygon } from 'react-leaflet';
 import { getField } from '../api/api';
 import { getSeverityClass, getSeverityColor } from '../lib/severity';
 import AnomalyHeatmap from './AnomalyHeatmap';
@@ -19,35 +18,35 @@ const ZONE_COORDS = {
   'C3': { lat: 31.5192, lng: 74.3585 },
 };
 
-function AnomalyMarkers({ anomalies, onPulseAnomalyId }) {
+function AnomalyMarkers({ anomalies }) {
   return anomalies?.map((anomaly) => {
     const coords = anomaly.detected_region?.coordinates || ZONE_COORDS[anomaly.zone];
     if (!coords) return null;
-    const isPulsing = anomaly.anomaly_id === onPulseAnomalyId;
     const severityColor = getSeverityColor(anomaly.severity);
-    return (
-      <Marker
-        key={anomaly.anomaly_id}
-        position={[coords.lat, coords.lng]}
-        icon={L.divIcon({
-          className: `anomaly-marker ${isPulsing ? 'pulsing' : ''}`,
-          html: `<div style="width: 16px; height: 16px; border-radius: 50%; background: ${severityColor}; box-shadow: 0 0 0 3px var(--bg-main), 0 0 12px ${severityColor};${isPulsing ? ' animation: pulse-marker 1.5s ease-in-out infinite;' : ''}"></div>`,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8]
-        })}
-      >
-        <Popup>
-          <div className="glass p-4 min-w-[200px]">
-            <h4 className="font-medium mb-2">Zone {anomaly.detected_region?.zone || anomaly.zone}</h4>
-            <p className="text-sm">
-              Type: {anomaly.anomaly_type.replace('_', ' ')}<br/>
-              Severity: <span className={getSeverityClass(anomaly.severity)}>
-                {((anomaly.severity * 100).toFixed(0))}%
-              </span>
-            </p>
-          </div>
-        </Popup>
-      </Marker>
+      return (
+        <CircleMarker
+          key={anomaly.anomaly_id}
+          center={[coords.lat, coords.lng]}
+          radius={8}
+          pathOptions={{
+            fillColor: severityColor,
+            fillOpacity: 1,
+            color: 'var(--bg-main)',
+            weight: 3,
+          }}
+        >
+          <Popup>
+            <div className="glass p-4 min-w-[200px]">
+              <h4 className="font-medium mb-2">Zone {anomaly.detected_region?.zone || anomaly.zone}</h4>
+              <p className="text-sm">
+                Type: {anomaly.anomaly_type.replace('_', ' ')}<br/>
+                Severity: <span className={getSeverityClass(anomaly.severity)}>
+                  {((anomaly.severity * 100).toFixed(0))}%
+                </span>
+              </p>
+            </div>
+          </Popup>
+        </CircleMarker>
     );
   });
 }
@@ -83,16 +82,12 @@ export default function FieldMap({ fieldId }) {
   const [field, setField] = useState(null);
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
-  const [pulseAnomalyId, setPulseAnomalyId] = useState(null);
 
   useEffect(() => {
     async function loadField() {
       try {
         const data = await getField(fieldId);
         setField(data);
-        if (data?.anomalies?.length) {
-          setPulseAnomalyId(data.anomalies[0].anomaly_id);
-        }
       } catch (error) {
         console.error('Failed to load field:', error);
       }
@@ -101,22 +96,10 @@ export default function FieldMap({ fieldId }) {
   }, [fieldId]);
 
   useEffect(() => {
-    delete L.Icon.Default.prototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    });
-  }, []);
-
-  useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
-      @keyframes pulse-marker {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.5); opacity: 0.7; }
-      }
-      .anomaly-marker.pulsing { animation: pulse-marker 1.5s ease-in-out infinite; }
+      .leaflet-layer { filter: invert(100%) hue-rotate(180deg) brightness(1.15) contrast(0.85); }
+      .leaflet-container { background: #0B0F17; }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
@@ -155,9 +138,9 @@ export default function FieldMap({ fieldId }) {
         {/* Map */}
         <MapContainer center={center} zoom={14} maxZoom={20} scrollWheelZoom={true} className="h-full w-full rounded-lg">
           <TileLayer
-            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            maxZoom={20}
+            attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={19}
           />
           {fieldPolygon && (
             <Polygon
@@ -170,7 +153,7 @@ export default function FieldMap({ fieldId }) {
             />
           )}
           {showHeatmap && <AnomalyHeatmap anomalies={field.anomalies} />}
-          {showMarkers && <AnomalyMarkers anomalies={field.anomalies} onPulseAnomalyId={pulseAnomalyId} />}
+          {showMarkers && <AnomalyMarkers anomalies={field.anomalies} />}
           <MapLegend />
         </MapContainer>
 
