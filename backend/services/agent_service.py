@@ -9,13 +9,16 @@ from services.mock_data import (
 )
 from models import Diagnosis, Evidence, Recommendation, Anomaly
 from sqlalchemy.orm import Session
-from anthropic import Anthropic
 import uuid
 import os
 import json
 
-# Initialize Anthropic client
-client = Anthropic()
+try:
+    from anthropic import Anthropic
+    client = Anthropic() if os.getenv("CLAUDE_API_KEY") else None
+except ImportError:
+    client = None
+
 
 # Tool definitions for Claude
 TOOLS = [
@@ -97,27 +100,31 @@ def execute_tool(tool_name: str, tool_input: dict) -> dict:
     else:
         return {"error": f"Unknown tool: {tool_name}"}
 
-async def run_agent(anomaly_id: str, field_id: str, anomaly_type: str, evidence_data: dict, db: Session):
+async def run_agent(anomaly_id: str, field_id: str, anomaly_type: str, evidence_data: dict, db: Session = None):
     """
     Run the AI agent to diagnose an anomaly.
     
     Process:
     1. Get anomaly context
-    2. Call Claude API with tool definitions
-    3. Claude decides which tools to call
-    4. Execute tools, get results
-    5. Send results back to Claude
-    6. Claude generates diagnosis
-    7. Store diagnosis, evidence, recommendation in DB
+    2. Call Claude API with tool definitions (or fallback mock)
+    3. Execute tools, get results
+    4. Store diagnosis, evidence, recommendation in DB
     """
-    
-    api_key = os.getenv("CLAUDE_API_KEY")
-    if not api_key:
-        # Fallback: use mock diagnosis if API key not set
-        return generate_mock_diagnosis(anomaly_id, field_id, anomaly_type, evidence_data, db)
-    
+    should_close_db = False
+    if db is None:
+        from database import SessionLocal
+        db = SessionLocal()
+        should_close_db = True
+
     try:
+        api_key = os.getenv("CLAUDE_API_KEY")
+        if not api_key or not client:
+            # Fallback: use mock diagnosis if API key or anthropic SDK not available
+            return generate_mock_diagnosis(anomaly_id, field_id, anomaly_type, evidence_data, db)
+
+
         # Build initial prompt for Claude
+
         system_prompt = """You are an expert agricultural AI system diagnosing crop health anomalies.
 
 Your task:
@@ -200,6 +207,10 @@ Please investigate this anomaly by:
         print(f"Claude API error: {e}")
         # Fallback to mock diagnosis
         return generate_mock_diagnosis(anomaly_id, field_id, anomaly_type, evidence_data, db)
+    finally:
+        if should_close_db and db:
+            db.close()
+
 
 def generate_mock_diagnosis(anomaly_id: str, field_id: str, anomaly_type: str, evidence_data: dict, db: Session):
     """Generate mock diagnosis for testing (no Claude API needed)"""

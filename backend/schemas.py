@@ -1,6 +1,37 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
+
+# ===== Error Response =====
+class ErrorResponseSchema(BaseModel):
+    error: str
+    message: str
+
+# ===== Farmer Decision =====
+class FarmerDecisionSchema(BaseModel):
+    status_color: str  # RED, YELLOW, GREEN
+    status_emoji: str  # 🚨, ⚠️, ✅
+    headline_what: str
+    headline_why: str
+    urgency_hours: int
+
+# ===== Impact Metrics =====
+class ImpactMetricsSchema(BaseModel):
+    crop_loss_saved_usd: float
+    water_saved_liters: float
+    cost_saved_usd: float
+
+# ===== Voice Response =====
+class VoiceResponseSchema(BaseModel):
+    anomaly_id: str
+    audio_url: str
+    spoken_script: str
+
+# ===== SMS Response =====
+class SMSResponseSchema(BaseModel):
+    anomaly_id: str
+    sms_text: str
+    character_count: int
 
 # ===== Evidence =====
 class EvidenceSchema(BaseModel):
@@ -45,6 +76,10 @@ class AnomalyResponseSchema(BaseModel):
     severity: float
     confidence: float
     detected_region: DetectedRegionSchema
+    farmer_decision: FarmerDecisionSchema
+    impact_metrics: ImpactMetricsSchema
+    voice_audio_url: str
+    sms_text: str
     evidence: EvidenceSchema
     diagnosis: DiagnosisSchema
     recommendation: RecommendationSchema
@@ -53,10 +88,29 @@ class AnomalyResponseSchema(BaseModel):
     class Config:
         from_attributes = True
 
+
 # ===== Analyze Request =====
 class AnalyzeRequestSchema(BaseModel):
     image_url: str
     field_id: str
+
+    @field_validator('image_url')
+    @classmethod
+    def validate_image_url(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("image_url cannot be empty")
+        val = v.strip()
+        if not (val.startswith('http://') or val.startswith('https://')):
+            raise ValueError("image_url must start with http:// or https://")
+        return val
+
+    @field_validator('field_id')
+    @classmethod
+    def validate_field_id(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("field_id cannot be empty")
+        return v.strip()
+
 
 # ===== Field Response =====
 class FieldAnomalySchema(BaseModel):
