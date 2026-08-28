@@ -88,6 +88,20 @@ export const MOCK_ANOMALY = {
     target_zone: "B3",
     description: "Prioritize irrigation for Zone B3 to restore soil moisture."
   },
+  farmer_decision: {
+    status_color: "RED",
+    status_emoji: "\u{1F6A8}",
+    headline_what: "WATER ZONE B3 TODAY",
+    headline_why: "Soil is dry (18% moisture) and heat is high (34\u00B0C).",
+    urgency_hours: 24
+  },
+  impact_metrics: {
+    crop_loss_saved_usd: 450,
+    water_saved_liters: 3000,
+    cost_saved_usd: 120
+  },
+  voice_audio_url: "/api/anomalies/anom-001/voice",
+  sms_text: "[CROP ALERT] Zone B3 RED. Water needed in 24h. Reason: 18% moisture. Crop loss saved: $450.",
   created_at: "2024-12-08T14:30:00Z"
 };
 

@@ -8,9 +8,20 @@ import { getSeverityClass, getSeverityColor } from '../lib/severity';
 import AnomalyHeatmap from './AnomalyHeatmap';
 import { Flame, Map, Sprout, AlertTriangle } from 'lucide-react';
 
+const ZONE_COORDS = {
+  'B3': { lat: 31.5204, lng: 74.3587 },
+  'A1': { lat: 31.5210, lng: 74.3580 },
+  'A2': { lat: 31.5208, lng: 74.3595 },
+  'B1': { lat: 31.5200, lng: 74.3582 },
+  'B2': { lat: 31.5202, lng: 74.3590 },
+  'C1': { lat: 31.5198, lng: 74.3598 },
+  'C2': { lat: 31.5195, lng: 74.3592 },
+  'C3': { lat: 31.5192, lng: 74.3585 },
+};
+
 function AnomalyMarkers({ anomalies, onPulseAnomalyId }) {
   return anomalies?.map((anomaly) => {
-    const coords = anomaly.detected_region?.coordinates;
+    const coords = anomaly.detected_region?.coordinates || ZONE_COORDS[anomaly.zone];
     if (!coords) return null;
     const isPulsing = anomaly.anomaly_id === onPulseAnomalyId;
     const severityColor = getSeverityColor(anomaly.severity);
@@ -27,7 +38,7 @@ function AnomalyMarkers({ anomalies, onPulseAnomalyId }) {
       >
         <Popup>
           <div className="glass p-4 min-w-[200px]">
-            <h4 className="font-medium mb-2">Zone {anomaly.detected_region.zone}</h4>
+            <h4 className="font-medium mb-2">Zone {anomaly.detected_region?.zone || anomaly.zone}</h4>
             <p className="text-sm">
               Type: {anomaly.anomaly_type.replace('_', ' ')}<br/>
               Severity: <span className={getSeverityClass(anomaly.severity)}>
