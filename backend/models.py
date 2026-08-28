@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Int, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -40,8 +40,8 @@ class Image(Base):
     field_id = Column(String(36), ForeignKey("fields.field_id"), nullable=False)
     image_url = Column(Text, nullable=False)
     source = Column(String(100))
-    resolution_width = Column(Int)
-    resolution_height = Column(Int)
+    resolution_width = Column(Integer)
+    resolution_height = Column(Integer)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     
     field = relationship("Field", back_populates="images")
@@ -99,9 +99,10 @@ class Recommendation(Base):
     recommendation_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     anomaly_id = Column(String(36), ForeignKey("anomalies.anomaly_id"), nullable=False, unique=True)
     action = Column(String(100), nullable=False)
-    priority = Column(Int, nullable=False)
+    priority = Column(Integer, nullable=False)
     target_zone = Column(String(50))
     description = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     anomaly = relationship("Anomaly", back_populates="recommendation")
+
