@@ -3,9 +3,16 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Anomaly, Diagnosis, Evidence, Recommendation, Field, Farm, Image
-from schemas import AnalyzeRequestSchema, AnomalyResponseSchema, ErrorResponseSchema
+from schemas import AnalyzeRequestSchema, AnomalyResponseSchema, ErrorResponseSchema, UpdateFieldCropSchema
 from services.anomaly_service import detect_anomaly
 from services.agent_service import run_agent
+from services.mock_data import (
+    get_all_crops,
+    get_crop_by_id,
+    generate_rotation_advice,
+    generate_field_telemetry_history
+)
+
 from datetime import datetime
 import uuid
 import asyncio
@@ -13,6 +20,7 @@ import asyncio
 from services.voice_service import generate_farmer_voice_script, generate_sms_payload
 
 router = APIRouter()
+
 
 @router.post("/api/analyze")
 async def analyze_image(request: AnalyzeRequestSchema, db: Session = Depends(get_db)):
@@ -254,3 +262,93 @@ def get_anomaly_details(anomaly_id: str, db: Session):
         } if recommendation else {},
         "created_at": anomaly.created_at.isoformat() if anomaly.created_at else None
     }
+
+
+# ============================================================================
+# CROP ENCYCLOPEDIA & CROP SELECTION ENDPOINTS
+# ============================================================================
+
+@router.get("/api/crops")
+async def list_crops():
+    """List all crops in the Pakistani Agricultural Encyclopedia"""
+    return get_all_crops()
+
+@router.get("/api/crops/{crop_id}")
+async def get_crop(crop_id: str):
+    """Fetch detailed specifications for a specific crop"""
+    crop = get_crop_by_id(crop_id)
+    if not crop:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "crop_not_found", "message": f"Crop '{crop_id}' not found in encyclopedia"}
+        )
+    return crop
+
+@router.put("/api/fields/{field_id}/crop")
+async def update_field_crop(field_id: str, request: UpdateFieldCropSchema, db: Session = Depends(get_db)):
+    """Update active crop for a field"""
+    field = db.query(Field).filter(Field.field_id == field_id).first()
+    if not field:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "field_not_found", "message": f"Field '{field_id}' not found"}
+        )
+    
+    # Validate crop exists in catalog
+    crop_info = get_crop_by_id(request.crop_type)
+    if not crop_info:
+        valid_crops = [c["crop_id"] for c in get_all_crops()]
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "invalid_crop_type",
+                "message": f"Crop '{request.crop_type}' is invalid. Allowed starter crops: {valid_crops}"
+            }
+        )
+    
+    field.crop_type = crop_info["crop_id"]
+    field.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(field)
+    
+    # Generate dynamic rotation advice after update
+    rotation_advice = generate_rotation_advice(field.crop_type)
+    
+    return {
+        "message": f"Field '{field.name}' updated successfully to crop '{crop_info['name']}'",
+        "field_id": field.field_id,
+        "name": field.name,
+        "crop": crop_info,
+        "rotation_advice": rotation_advice
+    }
+
+@router.get("/api/fields/{field_id}/rotation-advice")
+async def get_field_rotation_advice(field_id: str, db: Session = Depends(get_db)):
+    """Get smart non-forcing crop rotation suggestions for a field"""
+    field = db.query(Field).filter(Field.field_id == field_id).first()
+    if not field:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "field_not_found", "message": f"Field '{field_id}' not found"}
+        )
+    
+    return generate_rotation_advice(field.crop_type)
+
+
+# ============================================================================
+# TELEMETRY & FIELD DATA ENDPOINTS
+# ============================================================================
+
+@router.get("/api/fields/{field_id}/telemetry")
+async def get_field_telemetry(field_id: str, days: int = 45, db: Session = Depends(get_db)):
+    """Get historical telemetry timeseries (NDVI, soil moisture, temperature, rainfall, humidity) for a field"""
+    field = db.query(Field).filter(Field.field_id == field_id).first()
+    if not field:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "field_not_found", "message": f"Field '{field_id}' not found"}
+        )
+    
+    return generate_field_telemetry_history(field_id=field_id, days=days, crop_type=field.crop_type)
+
+
