@@ -155,3 +155,53 @@ class FarmResponseSchema(BaseModel):
     
     class Config:
         from_attributes = True
+
+# ===== Update Field Crop Request =====
+class UpdateFieldCropSchema(BaseModel):
+    crop_type: str
+
+    @field_validator('crop_type')
+    @classmethod
+    def validate_crop_type(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("crop_type cannot be empty")
+        return v.strip().lower()
+
+# ===== Crop Disease Info =====
+class CropDiseaseSchema(BaseModel):
+    name: str
+    symptoms: str
+    risk_factor: str
+
+# ===== Crop Optimal Moisture =====
+class OptimalMoistureSchema(BaseModel):
+    min: float
+    max: float
+
+# ===== Crop Schema =====
+class CropSchema(BaseModel):
+    crop_id: str
+    name: str
+    local_name: str
+    season: str
+    season_months: str
+    water_requirement_mm: float
+    water_range: str
+    optimal_soil_moisture_percent: OptimalMoistureSchema
+    soil_ph_range: str
+    growth_duration_days: int
+    description: str
+    common_diseases: List[CropDiseaseSchema]
+    recommended_rotation_crops: List[str]
+    rotation_benefits: str
+
+# ===== Telemetry Timeseries Data Point =====
+class TelemetryDataPointSchema(BaseModel):
+    date: str
+    ndvi: float
+    soil_moisture: float
+    temperature: float
+    rainfall: float
+    humidity: float
+
+
