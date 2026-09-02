@@ -2,9 +2,11 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Radio, Play, Pause, Smartphone, Volume2 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function CommunicationPanel({ voiceAudioUrl, smsText }) {
   const audioRef = useRef(null);
+  const { t } = useLanguage();
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioError, setAudioError] = useState(false);
 
@@ -27,12 +29,12 @@ export default function CommunicationPanel({ voiceAudioUrl, smsText }) {
     >
       <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)] mb-4 pb-3 border-b border-[var(--card-border)]">
         <Radio className="w-4 h-4 text-[var(--cyan)]" />
-        Communication
+        {t('comm.title')}
       </h3>
 
       {/* Voice Guide Section */}
       <div className="mb-5">
-        <p className="text-xs text-[var(--text-muted)] mb-2.5">Voice Guide for Farmers</p>
+        <p className="text-xs text-[var(--text-muted)] mb-2.5">{t('comm.voiceGuide')}</p>
         <div className="flex items-center gap-3">
           <button
             onClick={togglePlay}
@@ -47,12 +49,12 @@ export default function CommunicationPanel({ voiceAudioUrl, smsText }) {
             {isPlaying ? (
               <>
                 <Pause className="w-4 h-4" />
-                Pause Guide
+                {t('comm.pauseGuide')}
               </>
             ) : (
               <>
                 <Play className="w-4 h-4" />
-                Play Voice Guide
+                {t('comm.playGuide')}
               </>
             )}
           </button>
@@ -73,7 +75,7 @@ export default function CommunicationPanel({ voiceAudioUrl, smsText }) {
           )}
         </div>
         {audioError && (
-          <p className="text-xs text-[var(--amber)] mt-2">Audio unavailable for preview</p>
+          <p className="text-xs text-[var(--amber)] mt-2">{t('comm.audioUnavailable')}</p>
         )}
         <audio
           ref={audioRef}
@@ -85,18 +87,18 @@ export default function CommunicationPanel({ voiceAudioUrl, smsText }) {
 
       {/* SMS Preview Section */}
       <div>
-        <p className="text-xs text-[var(--text-muted)] mb-2.5">SMS Alert Preview</p>
+        <p className="text-xs text-[var(--text-muted)] mb-2.5">{t('comm.smsPreview')}</p>
         <div className="rounded-xl bg-[var(--bg-main)] p-4 border border-[var(--card-border)]">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-[var(--emerald)]/15 flex items-center justify-center flex-shrink-0">
               <Smartphone className="w-4 h-4 text-[var(--emerald)]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-medium text-[var(--text-muted)] mb-1">Crop Health Agent</p>
+              <p className="text-[11px] font-medium text-[var(--text-muted)] mb-1">{t('comm.agentName')}</p>
               <p className="text-sm text-[var(--text-primary)] leading-relaxed">{smsText}</p>
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--card-border)]">
-                <p className="text-[10px] text-[var(--text-muted)]">{smsText?.length || 0}/160 characters</p>
-                <span className="text-[10px] text-[var(--emerald)] font-medium">Low-bandwidth ready</span>
+                <p className="text-[10px] text-[var(--text-muted)]">{t('comm.characters', { count: smsText?.length || 0 })}</p>
+                <span className="text-[10px] text-[var(--emerald)] font-medium">{t('comm.lowBandwidth')}</span>
               </div>
             </div>
           </div>

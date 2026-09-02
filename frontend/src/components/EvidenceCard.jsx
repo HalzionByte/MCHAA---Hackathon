@@ -3,20 +3,22 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Sparkline from './UI/Sparkline';
 import { getAllTelemetryHistory } from '../api/api';
+import { useLanguage } from '../context/LanguageContext';
 import { Droplets, CloudRain, Thermometer, Wind, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 
-const metricConfigs = [
-  { label: 'Soil Moisture', unit: '%', key: 'soil_moisture', color: 'var(--cyan)', Icon: Droplets },
-  { label: 'Rainfall (7d)', unit: 'mm', key: 'rainfall', color: 'var(--emerald)', Icon: CloudRain },
-  { label: 'Temperature', unit: '°C', key: 'temperature', color: 'var(--amber)', Icon: Thermometer },
-  { label: 'Humidity', unit: '%', key: 'humidity', color: 'var(--cyan)', Icon: Wind },
-];
-
 export default function EvidenceCard({ evidence, fieldId }) {
+  const { t } = useLanguage();
   const [sparkData, setSparkData] = useState({});
 
+  const metricConfigs = [
+    { label: t('evidence.soilMoisture'), unit: '%', key: 'soil_moisture', color: 'var(--cyan)', Icon: Droplets },
+    { label: t('evidence.rainfall'), unit: 'mm', key: 'rainfall', color: 'var(--emerald)', Icon: CloudRain },
+    { label: t('evidence.temperature'), unit: '°C', key: 'temperature', color: 'var(--amber)', Icon: Thermometer },
+    { label: t('evidence.humidity'), unit: '%', key: 'humidity', color: 'var(--cyan)', Icon: Wind },
+  ];
+
   const ndviConfig = {
-    label: 'NDVI Change',
+    label: t('evidence.ndviChange'),
     value: `${evidence.vegetation_ndvi_change > 0 ? '+' : ''}${evidence.vegetation_ndvi_change}`,
     unit: 'NDVI',
     key: 'ndvi',
@@ -54,10 +56,10 @@ export default function EvidenceCard({ evidence, fieldId }) {
     <div className="glass-card p-5">
       <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)] mb-4 pb-3 border-b border-[var(--card-border)]">
         <Activity className="w-4 h-4 text-[var(--cyan)]" />
-        Environmental Evidence
+        {t('evidence.title')}
         <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-[var(--cyan)]">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--cyan)] animate-pulse-cyan" />
-          LIVE
+          {t('evidence.live')}
         </span>
       </h3>
       <div className="space-y-4">

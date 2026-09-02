@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Droplets, AlertTriangle, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getCrops } from '../../api/api';
+import { useLanguage } from '../../context/LanguageContext';
 
 const cropEmojis = {
   wheat: '🌾',
@@ -21,13 +22,14 @@ const cropCardBorders = {
 };
 
 function WaterGauge({ mm, maxMm = 2000 }) {
+  const { t } = useLanguage();
   const pct = Math.min((mm / maxMm) * 100, 100);
   return (
     <div className="mt-3">
       <div className="flex items-center justify-between mb-1.5">
         <span className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
           <Droplets className="w-4 h-4 text-[var(--cyan)]" />
-          Water Need
+          {t('crop.waterNeed')}
         </span>
         <span className="text-sm font-bold text-[var(--text-primary)]">{mm} mm</span>
       </div>
@@ -45,12 +47,13 @@ function WaterGauge({ mm, maxMm = 2000 }) {
 }
 
 function MoistureRange({ min, max }) {
+  const { t } = useLanguage();
   const range = 80;
   const minPct = (min / range) * 100;
   const maxPct = (max / range) * 100;
   return (
     <div className="mt-3">
-      <span className="text-sm text-[var(--text-muted)] block mb-1.5">Optimal Soil Moisture</span>
+      <span className="text-sm text-[var(--text-muted)] block mb-1.5">{t('crop.optimalMoisture')}</span>
       <div className="relative h-3 rounded-full bg-[var(--card-border)]">
         <div
           className="absolute h-full rounded-full"
@@ -78,12 +81,13 @@ function MoistureRange({ min, max }) {
 }
 
 function DiseaseRisk({ diseases }) {
+  const { t } = useLanguage();
   if (!diseases?.length) return null;
   return (
     <div className="mt-4">
       <span className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] mb-2">
         <AlertTriangle className="w-4 h-4 text-[var(--amber)]" />
-        Common Risks
+        {t('crop.commonRisks')}
       </span>
       <div className="space-y-2">
         {diseases.map((d, i) => {
@@ -111,6 +115,7 @@ function DiseaseRisk({ diseases }) {
 }
 
 function RotationTip({ crop }) {
+  const { t } = useLanguage();
   const rotationIds = crop.recommended_rotation_crops || [];
   if (!rotationIds.length) return null;
 
@@ -120,7 +125,7 @@ function RotationTip({ crop }) {
     <div className="mt-4 pt-4 border-t border-[var(--card-border)]">
       <div className="flex items-center gap-2 mb-2">
         <RefreshCw className="w-4 h-4 text-[var(--emerald)]" />
-        <span className="text-sm text-[var(--text-muted)]">After harvest, try</span>
+        <span className="text-sm text-[var(--text-muted)]">{t('crop.afterHarvest')}</span>
       </div>
       <div className="flex flex-wrap gap-2">
         {rotationIds.map((rid) => (
@@ -143,6 +148,7 @@ function RotationTip({ crop }) {
 
 export default function CropsPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [crops, setCrops] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -164,8 +170,8 @@ export default function CropsPage() {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)]">Crop Guide</h1>
-          <p className="text-base text-[var(--text-muted)]">Pakistani Agricultural Encyclopedia</p>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)]">{t('crop.guide')}</h1>
+          <p className="text-base text-[var(--text-muted)]">{t('crop.pakEncyclopedia')}</p>
         </div>
       </div>
 
@@ -214,7 +220,7 @@ export default function CropsPage() {
               {/* Quick Stats */}
               <div className="flex flex-wrap gap-3 mb-3">
                 <span className="text-xs px-3 py-1 rounded-full bg-[var(--card-border)]/50 text-[var(--text-muted)]">
-                  ⏱ {crop.growth_duration_days} days
+                  ⏱ {t('crop.days', { days: crop.growth_duration_days })}
                 </span>
                 <span className="text-xs px-3 py-1 rounded-full bg-[var(--card-border)]/50 text-[var(--text-muted)]">
                   🧪 pH {crop.soil_ph_range}

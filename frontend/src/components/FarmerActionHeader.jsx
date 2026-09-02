@@ -1,6 +1,7 @@
 "use client";
 import { motion } from 'framer-motion';
 import { Clock, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const colorMap = {
   RED: {
@@ -25,6 +26,7 @@ const colorMap = {
 
 export default function FarmerActionHeader({ farmerDecision }) {
   if (!farmerDecision) return null;
+  const { t } = useLanguage();
 
   const { status_color, status_emoji, headline_what, headline_why, urgency_hours } = farmerDecision;
   const colors = colorMap[status_color] || colorMap.YELLOW;
@@ -50,7 +52,7 @@ export default function FarmerActionHeader({ farmerDecision }) {
           style={{ background: `${colors.border}18`, color: colors.text }}
         >
           <Clock className="w-3.5 h-3.5" />
-          Resolve within {urgency_hours}h
+          {urgency_hours}h
         </div>
       </div>
     </motion.div>

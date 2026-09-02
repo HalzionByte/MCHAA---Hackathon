@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check } from 'lucide-react';
 import { getCrops, updateFieldCrop } from '../api/api';
+import { useLanguage } from '../context/LanguageContext';
 
 const cropStyles = {
   wheat: { bg: 'linear-gradient(135deg, rgba(180,130,40,0.35) 0%, rgba(160,100,20,0.15) 100%)', ring: '#D4A017' },
@@ -20,6 +21,7 @@ const cropEmojis = {
 };
 
 export default function CropSelectorModal({ isOpen, onClose, fieldId, currentCropType, onCropChanged }) {
+  const { t } = useLanguage();
   const [crops, setCrops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -109,7 +111,7 @@ export default function CropSelectorModal({ isOpen, onClose, fieldId, currentCro
                     <Check className="w-10 h-10 text-[var(--emerald)]" />
                   </motion.div>
                   <h3 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
-                    ✅ {confirmation.cropName} Selected!
+                    ✅ {t('crop.selected', { name: confirmation.cropName })}
                   </h3>
                   {confirmation.tip && (
                     <motion.p
@@ -126,7 +128,7 @@ export default function CropSelectorModal({ isOpen, onClose, fieldId, currentCro
                 /* Crop Selection Grid */
                 <motion.div key="selector" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6 text-center">
-                    Select Crop
+                    {t('crop.selectCrop')}
                   </h2>
 
                   {loading ? (
@@ -161,7 +163,7 @@ export default function CropSelectorModal({ isOpen, onClose, fieldId, currentCro
                                 className="absolute top-2 right-2 text-xs font-bold px-2 py-0.5 rounded-full"
                                 style={{ background: `${style.ring}30`, color: style.ring }}
                               >
-                                Current
+                                {t('crop.current')}
                               </span>
                             )}
 

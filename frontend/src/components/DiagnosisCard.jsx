@@ -3,19 +3,21 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfidenceRing from './UI/ConfidenceRing';
 import { ChevronDown, Brain } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function DiagnosisCard({ diagnosis }) {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useLanguage();
   return (
     <div className="glass-card p-5">
       <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)] mb-4 pb-3 border-b border-[var(--card-border)]">
         <Brain className="w-4 h-4 text-[var(--cyan)]" />
-        AI Diagnosis
+        {t('diagnosis.title')}
       </h3>
       <div className="flex items-center gap-6">
         <div className="flex flex-col items-center gap-1 flex-shrink-0">
           <ConfidenceRing value={diagnosis.confidence} size={72} />
-          <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Confidence</span>
+          <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">{t('diagnosis.confidence')}</span>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm text-[var(--text-muted)] leading-relaxed">{diagnosis.cause}</p>
@@ -23,7 +25,7 @@ export default function DiagnosisCard({ diagnosis }) {
             onClick={() => setExpanded(!expanded)}
             className="flex items-center gap-1.5 text-sm text-[var(--cyan)] hover:text-[var(--emerald)] transition-colors mt-3"
           >
-            {expanded ? 'Hide reasoning' : 'Show reasoning'}
+            {expanded ? t('diagnosis.hideReasoning') : t('diagnosis.showReasoning')}
             <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </button>
         </div>

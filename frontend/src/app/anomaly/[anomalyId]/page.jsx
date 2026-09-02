@@ -13,6 +13,7 @@ import RecommendationCard from '../../../components/RecommendationCard';
 import HealthTimeline from '../../../components/HealthTimeline';
 import AudioAlertPlayer from '../../../components/AudioAlertPlayer';
 import { getSeverityColor, getSeverityLabel, getSeverityBg } from '../../../lib/severity';
+import { useLanguage } from '../../../context/LanguageContext';
 
 function AnomalyPageSkeleton() {
   return (
@@ -37,6 +38,7 @@ function AnomalyPageSkeleton() {
 export default function AnomalyPage() {
   const { anomalyId } = useParams();
   const router = useRouter();
+  const { t, lang } = useLanguage();
   const [anomaly, setAnomaly] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,13 +50,13 @@ export default function AnomalyPage() {
         setAnomaly(data);
       } catch (err) {
         console.error('Failed to load anomaly:', err);
-        setError('Failed to load anomaly data.');
+        setError(t('anomaly.notFound'));
       } finally {
         setLoading(false);
       }
     }
     if (anomalyId) load();
-  }, [anomalyId]);
+  }, [anomalyId, t]);
 
   if (loading) {
     return (
@@ -75,10 +77,10 @@ export default function AnomalyPage() {
           className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back
+          {t('anomaly.back')}
         </button>
         <div className="glass-card p-8 text-center text-[var(--text-muted)]">
-          {error || 'Anomaly not found'}
+          {error || t('anomaly.notFound')}
         </div>
       </div>
     );
@@ -86,7 +88,7 @@ export default function AnomalyPage() {
 
   const severity = anomaly.severity;
   const severityColor = getSeverityColor(severity);
-  const severityLabel = getSeverityLabel(severity);
+  const severityLabel = getSeverityLabel(severity, lang);
   const severityBg = getSeverityBg(severity);
 
   return (
@@ -102,13 +104,13 @@ export default function AnomalyPage() {
           </button>
           <div>
             <h1 className="text-xl font-bold text-[var(--text-primary)]">
-              Anomaly Analysis
+              {t('anomaly.analysis')}
             </h1>
             <p className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
               <Sprout className="w-3.5 h-3.5" />
               {anomaly.anomaly_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
               <span className="text-[var(--card-border)]">·</span>
-              Zone {anomaly.detected_region?.zone || 'Unknown'}
+              {t('anomaly.zone')} {anomaly.detected_region?.zone || '?'}
               <span className="text-[var(--card-border)]">·</span>
               #{anomaly.anomaly_id?.slice(0, 8)}
             </p>
@@ -127,13 +129,13 @@ export default function AnomalyPage() {
       <div className="glass-card p-5 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
           <div className="flex items-center gap-2">
-            <span className="badge badge-alert">Active</span>
+            <span className="badge badge-alert">{t('anomaly.active')}</span>
             <span className="badge" style={{ background: severityBg, color: severityColor }}>
               {severityLabel} ({(severity * 100).toFixed(0)}%)
             </span>
           </div>
           <span className="text-sm text-[var(--text-muted)]">
-            AI Confidence: {(anomaly.confidence * 100).toFixed(0)}%
+            {t('anomaly.confidence', { value: (anomaly.confidence * 100).toFixed(0) })}
           </span>
         </div>
         <div className="progress-bar">
@@ -143,7 +145,7 @@ export default function AnomalyPage() {
           />
         </div>
         <p className="text-xs text-[var(--text-muted)] mt-2">
-          Severity progression: {(severity * 100).toFixed(0)}%
+          {t('anomaly.severityProgression', { value: (severity * 100).toFixed(0) })}
         </p>
       </div>
 

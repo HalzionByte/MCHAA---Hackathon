@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Clock, CheckCircle, Droplets, Bug, Scissors, Lightbulb } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const priorityConfig = {
   1: { label: 'Urgent', icon: AlertTriangle, color: 'var(--crimson)', bg: 'rgba(239,68,68,0.15)', slaHours: 24 },
@@ -15,17 +16,18 @@ const actionIcons = {
   harvest_early: Scissors,
 };
 
-function formatCountdown(hoursRemaining) {
-  if (hoursRemaining <= 0) return 'Overdue';
-  if (hoursRemaining < 24) return `${Math.floor(hoursRemaining)}h remaining`;
-  const days = Math.floor(hoursRemaining / 24);
-  return `${days}d remaining`;
-}
-
 export default function RecommendationCard({ recommendation, createdAt }) {
+  const { t } = useLanguage();
   const config = priorityConfig[recommendation.priority] || priorityConfig[3];
   const PriorityIcon = config.icon;
   const ActionIcon = actionIcons[recommendation.action] || Lightbulb;
+
+  function formatCountdown(hoursRemaining) {
+    if (hoursRemaining <= 0) return t('recommendation.overdue');
+    if (hoursRemaining < 24) return t('recommendation.hoursRemaining', { hours: Math.floor(hoursRemaining) });
+    const days = Math.floor(hoursRemaining / 24);
+    return t('recommendation.daysRemaining', { days });
+  }
 
   const [timeLeft, setTimeLeft] = useState(() => {
     if (!createdAt) return config.slaHours;
@@ -58,7 +60,7 @@ export default function RecommendationCard({ recommendation, createdAt }) {
 
       <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)] mb-4 pb-3 border-b border-[var(--card-border)]">
         <Lightbulb className="w-4 h-4 text-[var(--cyan)]" />
-        Recommended Action
+        {t('recommendation.title')}
       </h3>
 
       <div className="flex items-start gap-3 mb-3">
@@ -81,7 +83,7 @@ export default function RecommendationCard({ recommendation, createdAt }) {
       {/* Footer: Zone + SLA Countdown */}
       <div className="flex items-center justify-between pt-3 border-t border-[var(--card-border)]">
         <span className="badge" style={{ background: config.bg, color: config.color }}>
-          Zone: {recommendation.target_zone}
+          {t('recommendation.zone', { zone: recommendation.target_zone })}
         </span>
         <span
           className="flex items-center gap-1.5 text-xs font-medium"

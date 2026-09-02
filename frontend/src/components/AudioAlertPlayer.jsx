@@ -4,9 +4,11 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, Volume2 } from 'lucide-react';
 import { getAnomalyVoice } from '../api/api';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function AudioAlertPlayer({ anomalyId }) {
   const audioRef = useRef(null);
+  const { t } = useLanguage();
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [audioError, setAudioError] = useState(false);
@@ -118,10 +120,10 @@ export default function AudioAlertPlayer({ anomalyId }) {
         {/* Zone Label */}
         <div className="flex-1 min-w-0 ml-2">
           <p className="text-lg font-bold text-[var(--text-primary)] truncate">
-            {audioError ? 'Audio unavailable' : 'Voice Alert'}
+            {audioError ? t('audio.unavailable') : t('audio.voiceAlert')}
           </p>
           <p className="text-sm text-[var(--text-muted)] truncate">
-            {isPlaying ? 'Playing now...' : 'Tap play to listen'}
+            {isPlaying ? t('audio.playing') : t('audio.tapToPlay')}
           </p>
         </div>
 

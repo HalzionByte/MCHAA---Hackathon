@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { MapPin, AlertTriangle, Upload, Clock, CheckCircle2, Leaf, Sprout } from 'lucide-react';
 import AnalysisFlow from './AnalysisFlow';
 import AudioAlertPlayer from './AudioAlertPlayer';
+import LanguageToggle from './LanguageToggle';
+import { useLanguage } from '../context/LanguageContext';
 
 const cropEmojis = {
   wheat: '🌾',
@@ -15,19 +17,20 @@ const cropEmojis = {
   sugarcane: '🎋',
 };
 
-function formatRelativeTime(dateStr) {
-  if (!dateStr) return 'Never scanned';
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const hours = Math.floor(diff / 3600000);
-  if (hours < 1) return 'Just now';
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
 function FieldCard({ field }) {
+  const { t } = useLanguage();
   const isAlert = field.status === 'alert';
   const emoji = cropEmojis[field.crop_type] || '🌱';
+
+  function formatRelativeTime(dateStr) {
+    if (!dateStr) return t('status.neverScanned');
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const hours = Math.floor(diff / 3600000);
+    if (hours < 1) return t('status.justNow');
+    if (hours < 24) return t('status.hoursAgo', { hours });
+    const days = Math.floor(hours / 24);
+    return t('status.daysAgo', { days });
+  }
 
   return (
     <Link
@@ -79,12 +82,12 @@ function FieldCard({ field }) {
           {isAlert ? (
             <>
               <AlertTriangle className="w-5 h-5" />
-              {field.anomaly_count} {field.anomaly_count === 1 ? 'Issue' : 'Issues'}
+              {field.anomaly_count} {field.anomaly_count === 1 ? t('status.issue') : t('status.issues')}
             </>
           ) : (
             <>
               <CheckCircle2 className="w-5 h-5" />
-              Healthy
+              {t('status.healthy')}
             </>
           )}
         </span>
@@ -98,6 +101,7 @@ function FieldCard({ field }) {
 }
 
 export default function FarmOverview({ farmId }) {
+  const { t } = useLanguage();
   const router = useRouter();
   const [farm, setFarm] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -137,7 +141,7 @@ export default function FarmOverview({ farmId }) {
       <div className="max-w-7xl mx-auto p-6">
         <div className="glass-card p-8 text-center text-[var(--text-muted)]">
           <div className="animate-spin w-8 h-8 border-2 border-[var(--cyan)] border-t-transparent rounded-full mx-auto mb-3" />
-          Loading farm data...
+          {t('farm.loading')}
         </div>
       </div>
     );
@@ -145,7 +149,7 @@ export default function FarmOverview({ farmId }) {
   if (!farm) {
     return (
       <div className="max-w-7xl mx-auto p-6">
-        <div className="glass-card p-8 text-center text-[var(--text-muted)]">Farm not found</div>
+        <div className="glass-card p-8 text-center text-[var(--text-muted)]">{t('farm.notFound')}</div>
       </div>
     );
   }
@@ -169,26 +173,27 @@ export default function FarmOverview({ farmId }) {
             </div>
           </div>
 
-          {/* Right: System Status */}
-          <div className="flex items-center gap-3">
+          {/* Right: System Status + Language Toggle */}
+          <div className="flex items-center gap-3 flex-wrap">
             <span className="stat-chip text-[var(--cyan)] border-[var(--cyan)]/30">
               <span className="w-2 h-2 rounded-full bg-[var(--cyan)] animate-pulse-cyan" />
-              System Active
+              {t('farm.systemActive')}
             </span>
             <Link
               href="/crops"
               className="stat-chip text-[var(--emerald)] border-[var(--emerald)]/30 hover:bg-[var(--emerald)]/10 transition-colors"
             >
               <Sprout className="w-4 h-4" />
-              Crop Guide
+              {t('farm.cropGuide')}
             </Link>
+            <LanguageToggle />
           </div>
         </div>
       </header>
 
       {/* Field Cards Grid */}
       <div>
-        <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-4">Your Fields</h2>
+        <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-4">{t('farm.yourFields')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {farm.fields.map((field) => (
             <FieldCard key={field.field_id} field={field} />
@@ -203,7 +208,7 @@ export default function FarmOverview({ farmId }) {
         style={{ minHeight: 80 }}
       >
         <Upload className="w-7 h-7" />
-        📸 Upload Image
+        {t('farm.uploadImage')}
       </button>
 
       {/* Analysis Modal */}

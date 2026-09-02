@@ -1,33 +1,37 @@
 "use client";
 import { motion } from 'framer-motion';
 import { TrendingUp, Droplets, DollarSign } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
-const metrics = [
-  {
-    key: 'crop_loss_saved_usd',
-    label: 'Crop Loss Saved',
-    format: (v) => `$${v.toLocaleString()}`,
-    color: 'var(--emerald)',
-    Icon: TrendingUp,
-  },
-  {
-    key: 'water_saved_liters',
-    label: 'Water Saved',
-    format: (v) => `${v.toLocaleString()}L`,
-    color: 'var(--cyan)',
-    Icon: Droplets,
-  },
-  {
-    key: 'cost_saved_usd',
-    label: 'Cost Saved',
-    format: (v) => `$${v.toLocaleString()}`,
-    color: 'var(--emerald)',
-    Icon: DollarSign,
-  },
-];
+const metrics = [];
 
 export default function ImpactMetricsCard({ impactMetrics }) {
+  const { t } = useLanguage();
   if (!impactMetrics) return null;
+
+  const metrics = [
+    {
+      key: 'crop_loss_saved_usd',
+      label: t('impact.cropLossSaved'),
+      format: (v) => `$${v.toLocaleString()}`,
+      color: 'var(--emerald)',
+      Icon: TrendingUp,
+    },
+    {
+      key: 'water_saved_liters',
+      label: t('impact.waterSaved'),
+      format: (v) => `${v.toLocaleString()}L`,
+      color: 'var(--cyan)',
+      Icon: Droplets,
+    },
+    {
+      key: 'cost_saved_usd',
+      label: t('impact.costSaved'),
+      format: (v) => `$${v.toLocaleString()}`,
+      color: 'var(--emerald)',
+      Icon: DollarSign,
+    },
+  ];
 
   return (
     <motion.div
@@ -37,7 +41,7 @@ export default function ImpactMetricsCard({ impactMetrics }) {
     >
       <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)] mb-4 pb-3 border-b border-[var(--card-border)]">
         <TrendingUp className="w-4 h-4 text-[var(--emerald)]" />
-        Impact Summary
+        {t('impact.title')}
       </h3>
       <div className="grid grid-cols-3 gap-3">
         {metrics.map((m, i) => {

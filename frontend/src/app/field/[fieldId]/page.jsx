@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Upload, Sprout, AlertTriangle, Volume2, Pause } from 'lucide-react';
+import { ArrowLeft, Upload, AlertTriangle, Volume2, Pause } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AnalysisFlow from '../../../components/AnalysisFlow';
 import EvidenceCard from '../../../components/EvidenceCard';
@@ -13,6 +13,7 @@ import HealthTimeline from '../../../components/HealthTimeline';
 import CropSelectorModal from '../../../components/CropSelectorModal';
 import AudioAlertPlayer from '../../../components/AudioAlertPlayer';
 import { getField, getAnomaly, getAnomalyVoice } from '../../../api/api';
+import { useLanguage } from '../../../context/LanguageContext';
 
 const FieldMap = dynamic(() => import('../../../components/FieldMap'), { ssr: false });
 
@@ -40,21 +41,22 @@ function SidebarSkeleton() {
 }
 
 function NoAnomalyPlaceholder({ onOpenAnalysis }) {
+  const { t } = useLanguage();
   return (
     <div className="glass-card p-8 text-center space-y-4">
       <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[var(--emerald)]/10 mx-auto">
         <AlertTriangle className="w-7 h-7 text-[var(--emerald)]" />
       </div>
-      <h3 className="text-base font-semibold text-[var(--text-primary)]">No Active Anomalies</h3>
+      <h3 className="text-base font-semibold text-[var(--text-primary)]">{t('field.noAnomalies')}</h3>
       <p className="text-sm text-[var(--text-muted)] max-w-xs mx-auto">
-        This field is healthy. Upload an image to run a new analysis.
+        {t('field.noAnomaliesDesc')}
       </p>
       <button
         onClick={onOpenAnalysis}
         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--emerald)] text-[var(--bg-main)] text-sm font-semibold hover:opacity-90 transition-opacity"
       >
         <Upload className="w-4 h-4" />
-        Upload & Analyze
+        {t('field.uploadAnalyze')}
       </button>
     </div>
   );
@@ -64,6 +66,7 @@ export default function FieldPage() {
   const { fieldId } = useParams();
   const router = useRouter();
   const audioRef = useRef(null);
+  const { t } = useLanguage();
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showCropSelector, setShowCropSelector] = useState(false);
   const [field, setField] = useState(null);
@@ -155,7 +158,7 @@ export default function FieldPage() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-              {loading ? 'Loading...' : field?.name || 'Field Analysis'}
+              {loading ? t('field.loading') : field?.name || t('field.analysis')}
             </h1>
             {!loading && field && (
               <button
@@ -165,11 +168,11 @@ export default function FieldPage() {
                 <span className="text-xl">{cropEmojis[field.crop_type] || '🌱'}</span>
                 <span className="capitalize">{field.crop_type}</span>
                 <span className="text-sm text-[var(--cyan)] opacity-0 group-hover:opacity-100 transition-opacity">
-                  — Tap to Change
+                  {t('field.tapToChange')}
                 </span>
                 <span className="text-[var(--card-border)]">·</span>
                 <span>
-                  {field.anomalies?.length === 1 ? '1 active anomaly' : `${field.anomalies?.length || 0} active anomalies`}
+                  {field.anomalies?.length === 1 ? t('field.anomalyOne') : t('field.anomalyCount', { count: field.anomalies?.length || 0 })}
                 </span>
               </button>
             )}
@@ -180,7 +183,7 @@ export default function FieldPage() {
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--emerald)] text-[var(--bg-main)] font-semibold text-sm hover:opacity-90 transition-opacity"
         >
           <Upload className="w-4 h-4" />
-          Upload & Analyze
+          {t('field.uploadAnalyze')}
         </button>
       </div>
 
