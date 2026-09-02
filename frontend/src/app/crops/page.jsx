@@ -14,6 +14,59 @@ const cropEmojis = {
   sugarcane: '🎋',
 };
 
+const cropTranslations = {
+  ur: {
+    wheat: {
+      name: 'گندم',
+      local_name: 'گندم',
+      description: 'گندم پاکستان کی سب سے اہم فصل ہے جو ریبعی موسم میں کشید کی جاتی ہے۔ یہ فصل نومبر سے اپریل تک کھیتی جاتی ہے۔',
+      season: 'ربیع',
+      rotation_benefits: 'گندم کے بعد دلیہ یا مونگ کی فصل بوجھے سے مٹی کی زرخیزی بڑھتی ہے۔',
+      diseases: {
+        'Wheat Rust': { name: 'گندم کا زنگ', symptoms: 'بھورے یا نارنجی دھبے پتوں پر نمودار ہوتے ہیں۔' },
+        'Powdery Mildew': { name: 'پاؤڈری ملڈیو', symptoms: 'سفید پاؤڈر جیسا مادہ پتوں پر لگ جاتا ہے۔' },
+        'Karnal Bunt': { name: 'کارنال بنت', symptoms: 'dana سیاہ اور بدبو دار ہو جاتا ہے۔' },
+      },
+    },
+    rice: {
+      name: 'چاول',
+      local_name: 'چاول / دھان',
+      description: 'چاول پاکستان کی دوسری بڑی غذائی فصل ہے۔ یہ خریفی موسم میں جون سے نومبر تک کشید کی جاتی ہے۔',
+      season: 'خریف',
+      rotation_benefits: 'چاول کے بعد گندم یا سرسوں بوجھنے سے زمین کی صحت بہتر ہوتی ہے۔',
+      diseases: {
+        'Rice Blast': { name: 'چاول کا بھاپ', symptoms: 'پتوں پر سفید یا بھورے دھبے نمودار ہوتے ہیں۔' },
+        'Bacterial Blight': { name: 'بیکٹیریل بلائٹ', symptoms: 'پتوں کی نوکیں پیلی ہو کر سوکھ جاتی ہیں۔' },
+        'Sheath Blight': { name: 'شیتھ بلائٹ', symptoms: 'تنے کے نیچے حصے پر بھورے دھبے لگتے ہیں۔' },
+      },
+    },
+    cotton: {
+      name: 'کپاس',
+      local_name: 'کپاس / ریان',
+      description: 'کپاس پاکستان کی اہم نقدی فصل ہے۔ یہ خریفی موسم میں مئی سے اکتوبر تک کشید کی جاتی ہے۔',
+      season: 'خریف',
+      rotation_benefits: 'کپاس کے بعد گندم یا چنا بوجھنے سے زمین کی منڈی کم ہوتی ہے۔',
+      diseases: {
+        'Cotton Leaf Curl': { name: 'کپاس کے پتوں کا مروڑ', symptoms: 'پتوں کی کناری اوپر کی طرف مڑ جاتی ہیں۔' },
+        'Bollworm': { name: 'بول ورم', symptoms: 'کپاس کے فلوں میں کیڑے لگ جاتے ہیں۔' },
+        'Wilt': { name: 'والٹ', symptoms: 'پودا اچانک سوکھ جاتا ہے۔' },
+      },
+    },
+    sugarcane: {
+      name: 'گنا',
+      local_name: 'گنا / عقیق',
+      description: 'گنا پاکستان کی اہم چینی کی فصل ہے۔ یہ سال بھر کشید کی جا سکتی ہے۔',
+      season: 'ہر موسم',
+      rotation_benefits: 'گنا کے بعد دلیہ یا بیرسیم بوجھنے سے مٹی کی نمی بہتر ہوتی ہے۔',
+      diseases: {
+        'Red Rot': { name: 'لال سڑن', symptoms: 'تنے کا اندرونی حصہ سرخ ہو کر سڑ جاتا ہے۔' },
+        'Smosaic': { name: 'ایس موزیک', symptoms: 'پتوں پر پیلے دھبے نمودار ہوتے ہیں۔' },
+        'Whip Smut': { name: 'وپ سمٹ', symptoms: 'ٹپ پر کالا پاؤڈر بن جاتا ہے۔' },
+      },
+    },
+  },
+};
+
 const cropCardBorders = {
   wheat: 'border-amber-700/40',
   rice: 'border-emerald-700/40',
@@ -80,9 +133,15 @@ function MoistureRange({ min, max }) {
   );
 }
 
-function DiseaseRisk({ diseases }) {
+function DiseaseRisk({ diseases, cropId, lang }) {
   const { t } = useLanguage();
   if (!diseases?.length) return null;
+  const translated = lang === 'ur' && cropTranslations.ur?.[cropId]?.diseases
+    ? diseases.map(d => {
+        const tr = cropTranslations.ur[cropId].diseases[d.name];
+        return tr ? { ...d, name: tr.name, symptoms: tr.symptoms } : d;
+      })
+    : diseases;
   return (
     <div className="mt-4">
       <span className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] mb-2">
@@ -90,7 +149,7 @@ function DiseaseRisk({ diseases }) {
         {t('crop.commonRisks')}
       </span>
       <div className="space-y-2">
-        {diseases.map((d, i) => {
+        {translated.map((d, i) => {
           const isHighRisk = d.risk_factor?.toLowerCase().includes('high') || d.risk_factor?.toLowerCase().includes('waterlog');
           return (
             <div
@@ -114,12 +173,16 @@ function DiseaseRisk({ diseases }) {
   );
 }
 
-function RotationTip({ crop }) {
+function RotationTip({ crop, lang }) {
   const { t } = useLanguage();
   const rotationIds = crop.recommended_rotation_crops || [];
   if (!rotationIds.length) return null;
 
   const emojiMap = { wheat: '🌾', rice: '🍚', cotton: '🌿', sugarcane: '🎋', pulses: '🫘', berseem: '☘️', mustard: '🌻' };
+
+  const translatedBenefits = lang === 'ur' && cropTranslations.ur?.[crop.crop_id]?.rotation_benefits
+    ? cropTranslations.ur[crop.crop_id].rotation_benefits
+    : crop.rotation_benefits;
 
   return (
     <div className="mt-4 pt-4 border-t border-[var(--card-border)]">
@@ -139,8 +202,8 @@ function RotationTip({ crop }) {
           </span>
         ))}
       </div>
-      {crop.rotation_benefits && (
-        <p className="text-xs text-[var(--text-muted)] mt-2 leading-relaxed">{crop.rotation_benefits}</p>
+      {translatedBenefits && (
+        <p className="text-xs text-[var(--text-muted)] mt-2 leading-relaxed">{translatedBenefits}</p>
       )}
     </div>
   );
@@ -148,7 +211,7 @@ function RotationTip({ crop }) {
 
 export default function CropsPage() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [crops, setCrops] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -158,6 +221,19 @@ export default function CropsPage() {
       .catch(() => setCrops([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const translatedCrops = crops.map(crop => {
+    if (lang !== 'ur') return crop;
+    const tr = cropTranslations.ur?.[crop.crop_id];
+    if (!tr) return crop;
+    return {
+      ...crop,
+      name: tr.name || crop.name,
+      local_name: tr.local_name || crop.local_name,
+      description: tr.description || crop.description,
+      season: tr.season || crop.season,
+    };
+  });
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -184,7 +260,7 @@ export default function CropsPage() {
 
       {/* Crop Cards */}
       <div className="space-y-6">
-        {crops.map((crop, index) => {
+        {translatedCrops.map((crop, index) => {
           const emoji = cropEmojis[crop.crop_id] || '🌱';
           const borderColor = cropCardBorders[crop.crop_id] || 'border-[var(--card-border)]';
 
@@ -237,10 +313,10 @@ export default function CropsPage() {
               />
 
               {/* Disease Risk */}
-              <DiseaseRisk diseases={crop.common_diseases} />
+              <DiseaseRisk diseases={crop.common_diseases} cropId={crop.crop_id} lang={lang} />
 
               {/* Rotation Tips */}
-              <RotationTip crop={crop} />
+              <RotationTip crop={crop} lang={lang} />
             </motion.div>
           );
         })}

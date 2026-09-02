@@ -6,6 +6,7 @@ import { getField } from '../api/api';
 import { getSeverityClass, getSeverityColor } from '../lib/severity';
 import AnomalyHeatmap from './AnomalyHeatmap';
 import { Flame, Map, Sprout, AlertTriangle } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const ZONE_COORDS = {
   'B3': { lat: 31.5204, lng: 74.3587 },
@@ -18,7 +19,7 @@ const ZONE_COORDS = {
   'C3': { lat: 31.5192, lng: 74.3585 },
 };
 
-function AnomalyMarkers({ anomalies }) {
+function AnomalyMarkers({ anomalies, t }) {
   return anomalies?.map((anomaly) => {
     const coords = anomaly.detected_region?.coordinates || ZONE_COORDS[anomaly.zone];
     if (!coords) return null;
@@ -37,12 +38,14 @@ function AnomalyMarkers({ anomalies }) {
         >
           <Popup>
             <div className="glass p-4 min-w-[200px]">
-              <h4 className="font-medium mb-2">Zone {anomaly.detected_region?.zone || anomaly.zone}</h4>
+              <h4 className="font-medium mb-2">{t('map.zone', { zone: anomaly.detected_region?.zone || anomaly.zone })}</h4>
               <p className="text-sm">
-                Type: {anomaly.anomaly_type.replace('_', ' ')}<br/>
-                Severity: <span className={getSeverityClass(anomaly.severity)}>
-                  {((anomaly.severity * 100).toFixed(0))}%
-                </span>
+                {t('map.type', { type: anomaly.anomaly_type.replace('_', ' ') })}<br/>
+                {t('map.severityLabel', { severity: (
+                  <span className={getSeverityClass(anomaly.severity)}>
+                    {((anomaly.severity * 100).toFixed(0))}%
+                  </span>
+                ) })}
               </p>
             </div>
           </Popup>
@@ -52,14 +55,15 @@ function AnomalyMarkers({ anomalies }) {
 }
 
 function MapLegend() {
+  const { t } = useLanguage();
   const severities = [
-    { label: 'Critical', color: 'var(--crimson)', threshold: '> 70%' },
-    { label: 'Moderate', color: 'var(--amber)', threshold: '30-70%' },
-    { label: 'Low', color: 'var(--emerald)', threshold: '< 30%' }
+    { label: t('map.critical'), color: 'var(--crimson)', threshold: '> 70%' },
+    { label: t('map.moderate'), color: 'var(--amber)', threshold: '30-70%' },
+    { label: t('map.low'), color: 'var(--emerald)', threshold: '< 30%' }
   ];
   return (
     <div className="absolute bottom-4 right-4 field-overlay z-10 min-w-[180px]">
-      <h4 className="font-medium mb-2 text-[var(--text-primary)]">Anomaly Severity</h4>
+      <h4 className="font-medium mb-2 text-[var(--text-primary)]">{t('map.severity')}</h4>
       <div className="space-y-2">
         {severities.map((s) => (
           <div key={s.label} className="flex items-center gap-2">
@@ -70,7 +74,7 @@ function MapLegend() {
         <div className="border-t border-[var(--card-border)] pt-2 mt-2">
           <div className="flex items-center gap-2 text-xs">
             <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500" />
-            <span className="text-[var(--text-muted)]">Heatmap Intensity</span>
+            <span className="text-[var(--text-muted)]">{t('map.heatmapIntensity')}</span>
           </div>
         </div>
       </div>
@@ -79,6 +83,7 @@ function MapLegend() {
 }
 
 export default function FieldMap({ fieldId }) {
+  const { t } = useLanguage();
   const [field, setField] = useState(null);
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
@@ -109,7 +114,7 @@ export default function FieldMap({ fieldId }) {
     return (
       <div className="glass-card p-8 text-center text-[var(--text-muted)]">
         <div className="animate-spin w-8 h-8 border-2 border-[var(--cyan)] border-t-transparent rounded-full mx-auto mb-3" />
-        Loading field map...
+        {t('map.loading')}
       </div>
     );
   }
@@ -153,7 +158,7 @@ export default function FieldMap({ fieldId }) {
             />
           )}
           {showHeatmap && <AnomalyHeatmap anomalies={field.anomalies} />}
-          {showMarkers && <AnomalyMarkers anomalies={field.anomalies} />}
+          {showMarkers && <AnomalyMarkers anomalies={field.anomalies} t={t} />}
           <MapLegend />
         </MapContainer>
 
@@ -164,14 +169,14 @@ export default function FieldMap({ fieldId }) {
             className={`map-chip ${showHeatmap ? 'map-chip-active' : ''}`}
           >
             <Flame className="w-3.5 h-3.5" />
-            Heatmap
+            {t('map.heatmap')}
           </button>
           <button
             onClick={() => setShowMarkers(!showMarkers)}
             className={`map-chip ${showMarkers ? 'map-chip-active' : ''}`}
           >
             <Map className="w-3.5 h-3.5" />
-            Markers
+            {t('map.markers')}
           </button>
         </div>
 
@@ -186,7 +191,7 @@ export default function FieldMap({ fieldId }) {
           {field.anomalies?.length > 0 && (
             <div className="flex items-center gap-1 mt-1 text-xs text-[var(--crimson)]">
               <AlertTriangle className="w-3 h-3" />
-              {field.anomalies.length} anomaly detected
+              {t('map.anomalyDetected', { count: field.anomalies.length })}
             </div>
           )}
         </div>

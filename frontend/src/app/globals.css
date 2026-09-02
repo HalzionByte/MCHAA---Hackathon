@@ -29,6 +29,8 @@ html, body {
 
 a { color: inherit; text-decoration: none; }
 
+button { cursor: pointer; }
+
 .glass {
   background: rgba(22, 29, 42, 0.7);
   backdrop-filter: blur(8px);
