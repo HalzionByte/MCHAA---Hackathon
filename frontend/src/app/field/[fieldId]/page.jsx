@@ -1,17 +1,27 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Upload, Sprout, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Upload, Sprout, AlertTriangle, Volume2, Pause } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import AnalysisFlow from '../../../components/AnalysisFlow';
 import EvidenceCard from '../../../components/EvidenceCard';
 import DiagnosisCard from '../../../components/DiagnosisCard';
 import RecommendationCard from '../../../components/RecommendationCard';
 import HealthTimeline from '../../../components/HealthTimeline';
-import { getField, getAnomaly } from '../../../api/api';
+import CropSelectorModal from '../../../components/CropSelectorModal';
+import AudioAlertPlayer from '../../../components/AudioAlertPlayer';
+import { getField, getAnomaly, getAnomalyVoice } from '../../../api/api';
 
 const FieldMap = dynamic(() => import('../../../components/FieldMap'), { ssr: false });
+
+const cropEmojis = {
+  wheat: '🌾',
+  rice: '🍚',
+  cotton: '🌿',
+  sugarcane: '🎋',
+};
 
 function SidebarSkeleton() {
   return (
@@ -53,10 +63,17 @@ function NoAnomalyPlaceholder({ onOpenAnalysis }) {
 export default function FieldPage() {
   const { fieldId } = useParams();
   const router = useRouter();
+  const audioRef = useRef(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showCropSelector, setShowCropSelector] = useState(false);
   const [field, setField] = useState(null);
   const [anomaly, setAnomaly] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Voice play state
+  const [voicePlaying, setVoicePlaying] = useState(false);
+  const [voiceUrl, setVoiceUrl] = useState(null);
+  const [voiceLoading, setVoiceLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -81,26 +98,80 @@ export default function FieldPage() {
     router.push(`/anomaly/${anomalyId}`);
   };
 
+  const handleCropChanged = async () => {
+    try {
+      const fieldData = await getField(fieldId);
+      setField(fieldData);
+      if (fieldData?.anomalies?.length) {
+        const anomalyData = await getAnomaly(fieldData.anomalies[0].anomaly_id);
+        setAnomaly(anomalyData);
+      }
+    } catch (err) {
+      console.error('Failed to reload field data:', err);
+    }
+  };
+
+  const handleVoicePlay = async () => {
+    if (!anomaly) return;
+    if (voicePlaying && audioRef.current) {
+      audioRef.current.pause();
+      setVoicePlaying(false);
+      return;
+    }
+    if (voiceUrl && audioRef.current) {
+      audioRef.current.play().catch(() => {});
+      setVoicePlaying(true);
+      return;
+    }
+    setVoiceLoading(true);
+    try {
+      const data = await getAnomalyVoice(anomaly.anomaly_id);
+      if (data?.audio_url) {
+        setVoiceUrl(data.audio_url);
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.play().catch(() => {});
+            setVoicePlaying(true);
+          }
+        }, 100);
+      }
+    } catch {
+      // Audio unavailable
+    } finally {
+      setVoiceLoading(false);
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="max-w-7xl mx-auto p-6" style={{ paddingBottom: anomaly ? 120 : 24 }}>
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push('/')}
-            className="flex items-center justify-center w-9 h-9 rounded-lg border border-[var(--card-border)] bg-[var(--card-surface)] hover:bg-[var(--card-border)] transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            className="flex items-center justify-center w-10 h-10 rounded-lg border border-[var(--card-border)] bg-[var(--card-surface)] hover:bg-[var(--card-border)] transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-[var(--text-primary)]">
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">
               {loading ? 'Loading...' : field?.name || 'Field Analysis'}
             </h1>
             {!loading && field && (
-              <p className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
-                <Sprout className="w-3.5 h-3.5" />
-                {field.crop_type.charAt(0).toUpperCase() + field.crop_type.slice(1)} · {field.anomalies?.length === 1 ? '1 active anomaly' : `${field.anomalies?.length || 0} active anomalies`}
-              </p>
+              <button
+                onClick={() => setShowCropSelector(true)}
+                className="flex items-center gap-2 mt-1 text-base text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer group"
+              >
+                <span className="text-xl">{cropEmojis[field.crop_type] || '🌱'}</span>
+                <span className="capitalize">{field.crop_type}</span>
+                <span className="text-sm text-[var(--cyan)] opacity-0 group-hover:opacity-100 transition-opacity">
+                  — Tap to Change
+                </span>
+                <span className="text-[var(--card-border)]">·</span>
+                <span>
+                  {field.anomalies?.length === 1 ? '1 active anomaly' : `${field.anomalies?.length || 0} active anomalies`}
+                </span>
+              </button>
             )}
           </div>
         </div>
@@ -137,6 +208,76 @@ export default function FieldPage() {
         </div>
       </div>
 
+      {/* Floating Voice Play Button */}
+      {anomaly && (
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', damping: 15, stiffness: 200 }}
+          onClick={handleVoicePlay}
+          disabled={voiceLoading}
+          className="fixed bottom-24 right-6 z-30 flex items-center justify-center w-16 h-16 rounded-full shadow-lg transition-all"
+          style={{
+            background: voicePlaying ? 'var(--crimson)' : 'var(--cyan)',
+            color: 'var(--bg-main)',
+            boxShadow: voicePlaying
+              ? '0 4px 20px rgba(239,68,68,0.4)'
+              : '0 4px 20px rgba(6,182,212,0.4)',
+          }}
+          aria-label={voicePlaying ? 'Pause voice alert' : 'Play voice alert'}
+        >
+          {voiceLoading ? (
+            <div className="animate-spin w-6 h-6 border-2 border-current border-t-transparent rounded-full" />
+          ) : voicePlaying ? (
+            <div className="flex items-center gap-1">
+              <Pause className="w-6 h-6" />
+            </div>
+          ) : (
+            <Volume2 className="w-6 h-6" />
+          )}
+        </motion.button>
+      )}
+
+      {/* Floating Voice Equalizer */}
+      <AnimatePresence>
+        {voicePlaying && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed bottom-28 right-24 z-30 flex items-end gap-0.5"
+            style={{ height: 32 }}
+          >
+            {[1, 2, 3, 4].map((i) => (
+              <motion.div
+                key={i}
+                className="w-1 rounded-full"
+                style={{ background: 'var(--cyan)' }}
+                animate={{ height: [4, 20, 4] }}
+                transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1 }}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Hidden Audio */}
+      <audio
+        ref={audioRef}
+        src={voiceUrl}
+        onEnded={() => setVoicePlaying(false)}
+        onPause={() => setVoicePlaying(false)}
+      />
+
+      {/* Crop Selector Modal */}
+      <CropSelectorModal
+        isOpen={showCropSelector}
+        onClose={() => setShowCropSelector(false)}
+        fieldId={fieldId}
+        currentCropType={field?.crop_type}
+        onCropChanged={handleCropChanged}
+      />
+
       {/* Analysis Modal */}
       {showAnalysis && (
         <AnalysisFlow
@@ -145,6 +286,9 @@ export default function FieldPage() {
           onClose={() => setShowAnalysis(false)}
         />
       )}
+
+      {/* Audio Alert Player */}
+      {anomaly && <AudioAlertPlayer anomalyId={anomaly.anomaly_id} />}
     </div>
   );
 }

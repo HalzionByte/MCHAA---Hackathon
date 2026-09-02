@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { MOCK_FARM, MOCK_FIELD, MOCK_ANOMALY, MOCK_TELEMETRY_HISTORY } from '../mock/mockData';
+import { MOCK_FARM, MOCK_FIELD, MOCK_ANOMALY, MOCK_TELEMETRY_HISTORY, MOCK_CROPS } from '../mock/mockData';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
@@ -117,6 +117,80 @@ export async function getAnomalySms(anomalyId) {
     return normalizeResponse(response.data);
   } catch (error) {
     console.error('Error fetching SMS data:', error);
+    throw error;
+  }
+}
+
+export async function getCrops() {
+  if (USE_MOCK_DATA) return Promise.resolve(MOCK_CROPS);
+  try {
+    const response = await api.get('/api/crops');
+    return normalizeResponse(response.data);
+  } catch (error) {
+    console.error('Error fetching crops:', error);
+    throw error;
+  }
+}
+
+export async function getCropById(cropId) {
+  if (USE_MOCK_DATA) {
+    const crop = MOCK_CROPS.find(c => c.crop_id === cropId);
+    return Promise.resolve(crop || null);
+  }
+  try {
+    const response = await api.get(`/api/crops/${cropId}`);
+    return normalizeResponse(response.data);
+  } catch (error) {
+    console.error('Error fetching crop:', error);
+    throw error;
+  }
+}
+
+export async function updateFieldCrop(fieldId, cropType) {
+  if (USE_MOCK_DATA) {
+    const crop = MOCK_CROPS.find(c => c.crop_id === cropType);
+    const rotationAdvice = {
+      current_crop: cropType,
+      suggested_crops: MOCK_CROPS.filter(c => c.crop_id !== cropType).slice(0, 2).map(c => ({
+        crop_id: c.crop_id,
+        name: `${c.name} (${c.local_name})`,
+        season: c.season,
+        rationale: c.rotation_benefits,
+      })),
+      rotation_tip: crop?.rotation_benefits || 'Rotate crops to maintain soil health.',
+    };
+    return Promise.resolve({
+      message: `Field updated successfully to crop '${crop?.name || cropType}'`,
+      field_id: fieldId,
+      crop: crop,
+      rotation_advice: rotationAdvice,
+    });
+  }
+  try {
+    const response = await api.put(`/api/fields/${fieldId}/crop`, { crop_type: cropType });
+    return normalizeResponse(response.data);
+  } catch (error) {
+    console.error('Error updating field crop:', error);
+    throw error;
+  }
+}
+
+export async function getRotationAdvice(fieldId) {
+  if (USE_MOCK_DATA) {
+    return {
+      current_crop: 'wheat',
+      suggested_crops: [
+        { crop_id: 'cotton', name: 'Cotton (کپاس)', season: 'Kharif', rationale: 'Deep taproot aerates soil for next wheat cycle.' },
+        { crop_id: 'rice', name: 'Rice (چاول)', season: 'Kharif', rationale: 'Breaks soil compaction with flooded paddy conditions.' },
+      ],
+      rotation_tip: 'After wheat, plant cotton or rice to restore soil balance.',
+    };
+  }
+  try {
+    const response = await api.get(`/api/fields/${fieldId}/rotation-advice`);
+    return normalizeResponse(response.data);
+  } catch (error) {
+    console.error('Error fetching rotation advice:', error);
     throw error;
   }
 }

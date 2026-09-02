@@ -4,81 +4,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { getFarm } from '../api/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  Sprout, MapPin, AlertTriangle, TrendingUp,
-  Upload, Clock, CheckCircle2, Leaf
-} from 'lucide-react';
-import Sparkline from './UI/Sparkline';
+import { MapPin, AlertTriangle, Upload, Clock, CheckCircle2, Leaf, Sprout } from 'lucide-react';
 import AnalysisFlow from './AnalysisFlow';
+import AudioAlertPlayer from './AudioAlertPlayer';
 
-function generateTrendData(status) {
-  const base = status === 'alert' ? 0.45 : 0.72;
-  return Array.from({ length: 24 }, (_, i) =>
-    base + Math.sin(i * 0.3) * 0.06 + (Math.random() - 0.5) * 0.02
-  );
-}
-
-function FieldCard({ field }) {
-  const ndvi = getNdviForStatus(field.status);
-  const trendData = useMemo(() => generateTrendData(field.status), [field.status]);
-
-  return (
-    <Link
-      href={`/field/${field.field_id}`}
-      className="glass-card card-hover p-5 flex flex-col gap-4"
-    >
-      {/* Card Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-base font-semibold text-[var(--text-primary)]">{field.name}</h3>
-          <span className="inline-flex items-center gap-1 mt-1 text-xs text-[var(--text-muted)]">
-            <Sprout className="w-3 h-3" />
-            {field.crop_type.charAt(0).toUpperCase() + field.crop_type.slice(1)}
-          </span>
-        </div>
-        <span
-          className={`badge ${field.status === 'alert' ? 'badge-alert' : 'badge-healthy'}`}
-        >
-          {field.status === 'alert'
-            ? <><AlertTriangle className="w-3 h-3" /> Alert</>
-            : <><CheckCircle2 className="w-3 h-3" /> Healthy</>
-          }
-        </span>
-      </div>
-
-      {/* NDVI + Sparkline Row */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--text-muted)]">NDVI</span>
-          <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
-            style={{
-              background: `${getNdviColor(ndvi)}18`,
-              color: getNdviColor(ndvi),
-            }}
-          >
-            {ndvi.toFixed(2)}
-          </span>
-        </div>
-        <Sparkline data={trendData} color={getNdviColor(ndvi)} height={32} width={80} />
-      </div>
-
-      {/* Footer Stats */}
-      <div className="flex items-center justify-between pt-3 border-t border-[var(--card-border)]">
-        <div className="flex items-center gap-4 text-xs text-[var(--text-muted)]">
-          <span className="flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
-            {field.anomaly_count} {field.anomaly_count === 1 ? 'issue' : 'issues'}
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {formatRelativeTime(field.last_analyzed)}
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
-}
+const cropEmojis = {
+  wheat: '🌾',
+  rice: '🍚',
+  cotton: '🌿',
+  sugarcane: '🎋',
+};
 
 function formatRelativeTime(dateStr) {
   if (!dateStr) return 'Never scanned';
@@ -90,14 +25,76 @@ function formatRelativeTime(dateStr) {
   return `${days}d ago`;
 }
 
-function getNdviForStatus(status) {
-  return status === 'alert' ? 0.45 : 0.72;
-}
+function FieldCard({ field }) {
+  const isAlert = field.status === 'alert';
+  const emoji = cropEmojis[field.crop_type] || '🌱';
 
-function getNdviColor(ndvi) {
-  if (ndvi >= 0.6) return 'var(--emerald)';
-  if (ndvi >= 0.4) return 'var(--amber)';
-  return 'var(--crimson)';
+  return (
+    <Link
+      href={`/field/${field.field_id}`}
+      className="glass-card card-hover p-6 flex flex-col gap-5 min-h-[220px]"
+    >
+      {/* Traffic Light + Field Name Row */}
+      <div className="flex items-center gap-5">
+        {/* Giant Traffic Light */}
+        <div className="flex-shrink-0 relative">
+          <div
+            className="w-20 h-20 rounded-full flex items-center justify-center"
+            style={{
+              background: isAlert ? 'var(--crimson)' : 'var(--emerald)',
+              boxShadow: isAlert
+                ? '0 0 20px rgba(239,68,68,0.5), 0 0 40px rgba(239,68,68,0.2)'
+                : '0 0 20px rgba(16,185,129,0.5), 0 0 40px rgba(16,185,129,0.2)',
+              animation: isAlert ? 'traffic-light-pulse 2s ease-in-out infinite' : 'none',
+            }}
+          >
+            {isAlert ? (
+              <AlertTriangle className="w-9 h-9 text-white" />
+            ) : (
+              <CheckCircle2 className="w-9 h-9 text-white" />
+            )}
+          </div>
+        </div>
+
+        {/* Field Info */}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-2xl font-bold text-[var(--text-primary)] truncate">
+            {field.name}
+          </h3>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-2xl">{emoji}</span>
+            <span className="text-lg text-[var(--text-muted)] capitalize">
+              {field.crop_type}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Status + Scan Info Row */}
+      <div className="flex items-center gap-4 pt-3 border-t border-[var(--card-border)]">
+        <span
+          className="flex items-center gap-2 text-base font-bold"
+          style={{ color: isAlert ? 'var(--crimson)' : 'var(--emerald)' }}
+        >
+          {isAlert ? (
+            <>
+              <AlertTriangle className="w-5 h-5" />
+              {field.anomaly_count} {field.anomaly_count === 1 ? 'Issue' : 'Issues'}
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-5 h-5" />
+              Healthy
+            </>
+          )}
+        </span>
+        <span className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
+          <Clock className="w-4 h-4" />
+          {formatRelativeTime(field.last_analyzed)}
+        </span>
+      </div>
+    </Link>
+  );
 }
 
 export default function FarmOverview({ farmId }) {
@@ -120,9 +117,19 @@ export default function FarmOverview({ farmId }) {
     loadFarm();
   }, [farmId]);
 
-  const activeAnomalies = useMemo(() => {
-    if (!farm?.fields) return 0;
-    return farm.fields.reduce((sum, f) => sum + (f.anomaly_count || 0), 0);
+  const hasActiveAlert = useMemo(() => {
+    if (!farm?.fields) return false;
+    return farm.fields.some(f => f.status === 'alert');
+  }, [farm]);
+
+  const activeAnomalyId = useMemo(() => {
+    if (!farm?.fields) return null;
+    for (const f of farm.fields) {
+      if (f.status === 'alert' && f.anomalies?.length) {
+        return f.anomalies[0].anomaly_id;
+      }
+    }
+    return null;
   }, [farm]);
 
   if (loading) {
@@ -150,63 +157,54 @@ export default function FarmOverview({ farmId }) {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           {/* Left: Farm Info */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-[var(--cyan)]/10">
-              <Leaf className="w-5 h-5 text-[var(--cyan)]" />
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--cyan)]/10">
+              <Leaf className="w-6 h-6 text-[var(--cyan)]" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-[var(--text-primary)]">{farm.name}</h1>
-              <p className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
-                <MapPin className="w-3.5 h-3.5" />
+              <h1 className="text-2xl font-bold text-[var(--text-primary)]">{farm.name}</h1>
+              <p className="flex items-center gap-1.5 text-base text-[var(--text-muted)]">
+                <MapPin className="w-4 h-4" />
                 {farm.location}
               </p>
             </div>
-            <span className="ml-2 stat-chip text-[var(--cyan)] border-[var(--cyan)]/30">
+          </div>
+
+          {/* Right: System Status */}
+          <div className="flex items-center gap-3">
+            <span className="stat-chip text-[var(--cyan)] border-[var(--cyan)]/30">
               <span className="w-2 h-2 rounded-full bg-[var(--cyan)] animate-pulse-cyan" />
               System Active
             </span>
+            <Link
+              href="/crops"
+              className="stat-chip text-[var(--emerald)] border-[var(--emerald)]/30 hover:bg-[var(--emerald)]/10 transition-colors"
+            >
+              <Sprout className="w-4 h-4" />
+              Crop Guide
+            </Link>
           </div>
-
-          {/* Center: Quick Metrics */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="stat-chip">
-              <Sprout className="w-4 h-4 text-[var(--emerald)]" />
-              <span className="text-[var(--text-muted)]">Total Area</span>
-              <span className="font-semibold text-[var(--text-primary)]">240 ha</span>
-            </span>
-            <span className="stat-chip">
-              <TrendingUp className="w-4 h-4 text-[var(--emerald)]" />
-              <span className="text-[var(--text-muted)]">Avg NDVI</span>
-              <span className="font-semibold" style={{ color: getNdviColor(0.68) }}>0.68</span>
-            </span>
-            <span className="stat-chip" style={activeAnomalies > 0 ? { borderColor: 'var(--crimson)', background: 'rgba(239,68,68,0.08)' } : {}}>
-              <AlertTriangle className="w-4 h-4" style={{ color: activeAnomalies > 0 ? 'var(--crimson)' : 'var(--emerald)' }} />
-              <span className="text-[var(--text-muted)]">Anomalies</span>
-              <span className="font-semibold" style={{ color: activeAnomalies > 0 ? 'var(--crimson)' : 'var(--emerald)' }}>
-                {activeAnomalies}
-              </span>
-            </span>
-          </div>
-
-          {/* Right: CTA */}
-          <button
-            onClick={() => setShowAnalysis(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--emerald)] text-[var(--bg-main)] font-semibold text-sm hover:opacity-90 transition-opacity whitespace-nowrap"
-          >
-            <Upload className="w-4 h-4" />
-            Upload & Analyze
-          </button>
         </div>
       </header>
 
       {/* Field Cards Grid */}
       <div>
-        <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Fields</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-4">Your Fields</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {farm.fields.map((field) => (
             <FieldCard key={field.field_id} field={field} />
           ))}
         </div>
       </div>
+
+      {/* Giant Upload Button */}
+      <button
+        onClick={() => setShowAnalysis(true)}
+        className="w-full flex items-center justify-center gap-3 py-5 rounded-2xl bg-[var(--emerald)] text-[var(--bg-main)] font-bold text-xl hover:opacity-90 transition-opacity"
+        style={{ minHeight: 80 }}
+      >
+        <Upload className="w-7 h-7" />
+        📸 Upload Image
+      </button>
 
       {/* Analysis Modal */}
       {showAnalysis && (
@@ -219,6 +217,9 @@ export default function FarmOverview({ farmId }) {
           onClose={() => setShowAnalysis(false)}
         />
       )}
+
+      {/* Audio Player — only if there's an active alert */}
+      {hasActiveAlert && <AudioAlertPlayer anomalyId={activeAnomalyId} />}
     </div>
   );
 }

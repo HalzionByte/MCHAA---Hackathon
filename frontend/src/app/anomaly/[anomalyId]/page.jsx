@@ -11,6 +11,7 @@ import EvidenceCard from '../../../components/EvidenceCard';
 import DiagnosisCard from '../../../components/DiagnosisCard';
 import RecommendationCard from '../../../components/RecommendationCard';
 import HealthTimeline from '../../../components/HealthTimeline';
+import AudioAlertPlayer from '../../../components/AudioAlertPlayer';
 import { getSeverityColor, getSeverityLabel, getSeverityBg } from '../../../lib/severity';
 
 function AnomalyPageSkeleton() {
@@ -89,7 +90,7 @@ export default function AnomalyPage() {
   const severityBg = getSeverityBg(severity);
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="max-w-7xl mx-auto p-6" style={{ paddingBottom: 120 }}>
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -169,6 +170,9 @@ export default function AnomalyPage() {
       <div className="mt-6">
         <HealthTimeline fieldId={anomaly.field_id} />
       </div>
+
+      {/* Audio Alert Player */}
+      <AudioAlertPlayer anomalyId={anomaly.anomaly_id} />
     </div>
   );
 }
