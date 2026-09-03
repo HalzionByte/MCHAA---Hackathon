@@ -6,6 +6,7 @@ from models import Anomaly, Diagnosis, Evidence, Recommendation, Field, Farm, Im
 from schemas import AnalyzeRequestSchema, AnomalyResponseSchema, ErrorResponseSchema, UpdateFieldCropSchema
 from services.anomaly_service import detect_anomaly
 from services.agent_service import run_agent
+from services.live_data import build_evidence_from_live
 from services.mock_data import (
     get_all_crops,
     get_crop_by_id,
@@ -48,9 +49,15 @@ async def analyze_image(request: AnalyzeRequestSchema, db: Session = Depends(get
     db.commit()
     db.refresh(image)
     
-    # Detect anomaly (mock for MVP)
-    anomaly_data = detect_anomaly(request.image_url, request.field_id)
-    
+    # Detect anomaly — uses live soil/NDVI data in auto mode
+    anomaly_data = detect_anomaly(
+        request.image_url,
+        request.field_id,
+        field_lat=field.boundary_lat,
+        field_lng=field.boundary_lng,
+        crop_type=field.crop_type,
+    )
+
     # Create Anomaly record
     anomaly = Anomaly(
         anomaly_id=str(uuid.uuid4()),
@@ -66,16 +73,15 @@ async def analyze_image(request: AnalyzeRequestSchema, db: Session = Depends(get
     db.add(anomaly)
     db.commit()
     db.refresh(anomaly)
-    
-    # Prepare evidence data for agent
-    evidence_data = {
-        "soil_moisture_percent": 18,
-        "rainfall_7d_mm": 2,
-        "temperature_c": 34,
-        "humidity_percent": 45,
-        "vegetation_ndvi_change": -0.14,
-        "zone": anomaly.zone
-    }
+
+    # Prepare evidence data — live sources with mock fallback
+    evidence_data = build_evidence_from_live(
+        field_id=request.field_id,
+        field_lat=field.boundary_lat,
+        field_lng=field.boundary_lng,
+        crop_type=field.crop_type,
+        zone=anomaly.zone,
+    )
     
     # Run agent asynchronously (non-blocking)
     asyncio.create_task(
@@ -208,11 +214,13 @@ def get_anomaly_details(anomaly_id: str, db: Session):
     zone = anomaly.zone or "B3"
     saved_usd = 450.0
     
+    soil_pct = evidence.soil_moisture_percent if evidence else 18
+    temp_val = evidence.temperature_c if evidence else 34
     farmer_decision = {
         "status_color": "RED" if anomaly.severity >= 0.7 else "YELLOW",
         "status_emoji": "🚨" if anomaly.severity >= 0.7 else "⚠️",
         "headline_what": f"WATER ZONE {zone} TODAY",
-        "headline_why": "Soil moisture is dry (18%) and temperature is hot (34°C).",
+        "headline_why": f"Soil moisture is dry ({soil_pct}%) and temperature is hot ({temp_val}°C).",
         "urgency_hours": 24 if anomaly.severity >= 0.7 else 72
     }
     
