@@ -19,6 +19,13 @@ const ZONE_COORDS = {
   'C3': { lat: 31.5192, lng: 74.3585 },
 };
 
+const cropNameKeys = {
+  wheat: 'crop.wheat',
+  rice: 'crop.rice',
+  cotton: 'crop.cotton',
+  sugarcane: 'crop.sugarcane',
+};
+
 function AnomalyMarkers({ anomalies, t }) {
   return anomalies?.map((anomaly) => {
     const coords = anomaly.detected_region?.coordinates || ZONE_COORDS[anomaly.zone];
@@ -62,7 +69,7 @@ function MapLegend() {
     { label: t('map.low'), color: 'var(--emerald)', threshold: '< 30%' }
   ];
   return (
-    <div className="absolute bottom-4 right-4 field-overlay z-10 min-w-[180px]">
+    <div className="absolute bottom-4 end-4 field-overlay z-10 min-w-[180px]">
       <h4 className="font-medium mb-2 text-[var(--text-primary)]">{t('map.severity')}</h4>
       <div className="space-y-2">
         {severities.map((s) => (
@@ -163,7 +170,7 @@ export default function FieldMap({ fieldId }) {
         </MapContainer>
 
         {/* Floating Toggle Chips (top-right) */}
-        <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2">
+        <div className="absolute top-3 end-3 z-[1000] flex items-center gap-2">
           <button
             onClick={() => setShowHeatmap(!showHeatmap)}
             className={`map-chip ${showHeatmap ? 'map-chip-active' : ''}`}
@@ -181,12 +188,12 @@ export default function FieldMap({ fieldId }) {
         </div>
 
         {/* Floating Field Info (bottom-left) */}
-        <div className="absolute bottom-4 left-4 z-[1000] field-overlay">
+        <div className="absolute bottom-4 start-4 z-[1000] field-overlay">
           <div className="flex items-center gap-2">
             <Sprout className="w-4 h-4 text-[var(--emerald)]" />
             <span className="font-medium text-[var(--text-primary)]">{field.name}</span>
             <span className="text-[var(--text-muted)]">·</span>
-            <span className="text-[var(--text-muted)]">{field.crop_type.charAt(0).toUpperCase() + field.crop_type.slice(1)}</span>
+            <span className="text-[var(--text-muted)]">{cropNameKeys[field.crop_type] ? t(cropNameKeys[field.crop_type]) : field.crop_type}</span>
           </div>
           {field.anomalies?.length > 0 && (
             <div className="flex items-center gap-1 mt-1 text-xs text-[var(--crimson)]">

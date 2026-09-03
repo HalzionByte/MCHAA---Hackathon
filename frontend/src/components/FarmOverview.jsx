@@ -17,10 +17,18 @@ const cropEmojis = {
   sugarcane: '🎋',
 };
 
+const cropNameKeys = {
+  wheat: 'crop.wheat',
+  rice: 'crop.rice',
+  cotton: 'crop.cotton',
+  sugarcane: 'crop.sugarcane',
+};
+
 function FieldCard({ field }) {
   const { t } = useLanguage();
   const isAlert = field.status === 'alert';
   const emoji = cropEmojis[field.crop_type] || '🌱';
+  const cropNameKey = cropNameKeys[field.crop_type];
 
   function formatRelativeTime(dateStr) {
     if (!dateStr) return t('status.neverScanned');
@@ -66,8 +74,8 @@ function FieldCard({ field }) {
           </h3>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-2xl">{emoji}</span>
-            <span className="text-lg text-[var(--text-muted)] capitalize">
-              {field.crop_type}
+            <span className="text-lg text-[var(--text-muted)]">
+              {cropNameKey ? t(cropNameKey) : field.crop_type}
             </span>
           </div>
         </div>

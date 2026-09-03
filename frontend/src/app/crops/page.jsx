@@ -23,9 +23,9 @@ const cropTranslations = {
       season: 'ربیع',
       rotation_benefits: 'گندم کے بعد دلیہ یا مونگ کی فصل بوجھے سے مٹی کی زرخیزی بڑھتی ہے۔',
       diseases: {
-        'Wheat Rust': { name: 'گندم کا زنگ', symptoms: 'بھورے یا نارنجی دھبے پتوں پر نمودار ہوتے ہیں۔' },
-        'Powdery Mildew': { name: 'پاؤڈری ملڈیو', symptoms: 'سفید پاؤڈر جیسا مادہ پتوں پر لگ جاتا ہے۔' },
-        'Karnal Bunt': { name: 'کارنال بنت', symptoms: 'dana سیاہ اور بدبو دار ہو جاتا ہے۔' },
+        'Leaf Rust': { name: 'پتوں کا زنگ', symptoms: 'پتوں پر بھورے نارنجی بلبلے نمودار ہوتے ہیں۔' },
+        'Stripe Rust': { name: 'ستری زنگ', symptoms: 'پتوں کی رگوں کے ساتھ پیلی دھاریں ہوتی ہیں۔' },
+        'Heat & Water Stress': { name: 'گرمی اور پانی کا تناؤ', symptoms: 'انڈے سے پہلے دانہ سوکھ جاتا ہے۔' },
       },
     },
     rice: {
@@ -35,9 +35,9 @@ const cropTranslations = {
       season: 'خریف',
       rotation_benefits: 'چاول کے بعد گندم یا سرسوں بوجھنے سے زمین کی صحت بہتر ہوتی ہے۔',
       diseases: {
+        'Bacterial Leaf Blight': { name: 'بیکٹیریل پتہ بلائٹ', symptoms: 'پتوں پر پانی میں بھیگے دھبے پیلے ہو کر سوکھ جاتے ہیں۔' },
         'Rice Blast': { name: 'چاول کا بھاپ', symptoms: 'پتوں پر سفید یا بھورے دھبے نمودار ہوتے ہیں۔' },
-        'Bacterial Blight': { name: 'بیکٹیریل بلائٹ', symptoms: 'پتوں کی نوکیں پیلی ہو کر سوکھ جاتی ہیں۔' },
-        'Sheath Blight': { name: 'شیتھ بلائٹ', symptoms: 'تنے کے نیچے حصے پر بھورے دھبے لگتے ہیں۔' },
+        'Moisture Deficit': { name: 'نمی کی کمزوری', symptoms: 'پتلیاں لتھڑ جاتی ہیں اور جڑیں خشک ہو جاتی ہیں۔' },
       },
     },
     cotton: {
@@ -47,9 +47,9 @@ const cropTranslations = {
       season: 'خریف',
       rotation_benefits: 'کپاس کے بعد گندم یا چنا بوجھنے سے زمین کی منڈی کم ہوتی ہے۔',
       diseases: {
-        'Cotton Leaf Curl': { name: 'کپاس کے پتوں کا مروڑ', symptoms: 'پتوں کی کناری اوپر کی طرف مڑ جاتی ہیں۔' },
-        'Bollworm': { name: 'بول ورم', symptoms: 'کپاس کے فلوں میں کیڑے لگ جاتے ہیں۔' },
-        'Wilt': { name: 'والٹ', symptoms: 'پودا اچانک سوکھ جاتا ہے۔' },
+        'Leaf Curl Virus': { name: 'پتوں کے مروڑ کا وائرس', symptoms: 'پتوں کی کناری اوپر کی طرف مڑ جاتی ہیں، رگیں موٹی ہو جاتی ہیں۔' },
+        'Pink Bollworm': { name: 'گلابی بول ورم', symptoms: 'کپاس کے فلوں میں ریشم آلودہ ہوتا ہے۔' },
+        'Waterlogging Stress': { name: 'آبی زیرگی کا تناؤ', symptoms: 'کھڑے پانی سے پودا مرجھا جاتا ہے۔' },
       },
     },
     sugarcane: {
@@ -60,8 +60,8 @@ const cropTranslations = {
       rotation_benefits: 'گنا کے بعد دلیہ یا بیرسیم بوجھنے سے مٹی کی نمی بہتر ہوتی ہے۔',
       diseases: {
         'Red Rot': { name: 'لال سڑن', symptoms: 'تنے کا اندرونی حصہ سرخ ہو کر سڑ جاتا ہے۔' },
-        'Smosaic': { name: 'ایس موزیک', symptoms: 'پتوں پر پیلے دھبے نمودار ہوتے ہیں۔' },
         'Whip Smut': { name: 'وپ سمٹ', symptoms: 'ٹپ پر کالا پاؤڈر بن جاتا ہے۔' },
+        'Drought Stress': { name: 'خشک سالی کا تناؤ', symptoms: 'گنا چھوٹا رہ جاتا ہے، پتے خشک ہو جاتے ہیں۔' },
       },
     },
   },
@@ -179,6 +179,7 @@ function RotationTip({ crop, lang }) {
   if (!rotationIds.length) return null;
 
   const emojiMap = { wheat: '🌾', rice: '🍚', cotton: '🌿', sugarcane: '🎋', pulses: '🫘', berseem: '☘️', mustard: '🌻' };
+  const cropNameKeys = { wheat: 'crop.wheat', rice: 'crop.rice', cotton: 'crop.cotton', sugarcane: 'crop.sugarcane', pulses: 'crop.pulses', berseem: 'crop.berseem', mustard: 'crop.mustard' };
 
   const translatedBenefits = lang === 'ur' && cropTranslations.ur?.[crop.crop_id]?.rotation_benefits
     ? cropTranslations.ur[crop.crop_id].rotation_benefits
@@ -198,7 +199,7 @@ function RotationTip({ crop, lang }) {
             style={{ background: 'rgba(16,185,129,0.12)', color: 'var(--emerald)' }}
           >
             <span>{emojiMap[rid] || '🌱'}</span>
-            {rid.charAt(0).toUpperCase() + rid.slice(1)}
+            {cropNameKeys[rid] ? t(cropNameKeys[rid]) : rid.charAt(0).toUpperCase() + rid.slice(1)}
           </span>
         ))}
       </div>
@@ -243,7 +244,7 @@ export default function CropsPage() {
           onClick={() => router.push('/')}
           className="flex items-center justify-center w-10 h-10 rounded-lg border border-[var(--card-border)] bg-[var(--card-surface)] hover:bg-[var(--card-border)] transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className={`w-5 h-5 ${lang === 'ur' ? 'rotate-180' : ''}`} />
         </button>
         <div>
           <h1 className="text-3xl font-bold text-[var(--text-primary)]">{t('crop.guide')}</h1>
@@ -270,7 +271,7 @@ export default function CropsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className={`glass-card p-6 border-l-4 ${borderColor}`}
+              className={`glass-card p-6 border-s-4 ${borderColor}`}
             >
               {/* Crop Header */}
               <div className="flex items-center gap-4 mb-4">

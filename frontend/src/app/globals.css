@@ -27,6 +27,10 @@ html, body {
   line-height: 1.6;
 }
 
+.font-urdu {
+  font-family: var(--font-noto);
+}
+
 a { color: inherit; text-decoration: none; }
 
 button { cursor: pointer; }
@@ -111,6 +115,7 @@ button { cursor: pointer; }
   background: var(--card-border);
   border-radius: 4px;
   overflow: hidden;
+  direction: ltr;
 }
 .progress-fill { height: 100%; transition: width 0.3s ease; }
 

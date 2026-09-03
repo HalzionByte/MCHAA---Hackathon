@@ -82,6 +82,8 @@ export default {
   "audio.tapToPlay": "سننے کے لیے چلائیں",
   "audio.playing": "ابھی چل رہا ہے...",
   "audio.unavailable": "آواز دستیاب نہیں",
+  "audio.playAlert": "آواز اعلان چلائیں",
+  "audio.pauseAlert": "آواز اعلان روکیں",
 
   // Analysis Flow
   "analysis.title": "کھیت کی تصویر کا تجزیہ کریں",
@@ -114,6 +116,7 @@ export default {
   "crop.selectCrop": "فصل منتخب کریں",
   "crop.selected": "{{name}} منتخب ہو گیا!",
   "crop.current": "موجودہ",
+  "crop.close": "بند کریں",
 
   // Crop Encyclopedia
   "crop.guide": "فصل کی رہنمائی",
@@ -159,6 +162,46 @@ export default {
   "severity.critical": "تنقیدی",
   "severity.moderate": "درمیانہ",
   "severity.low": "کم",
+
+  // Anomaly Detail
+  "anomaly.loading": "بے قاعدگی کا ڈیٹا لوڈ ہو رہا ہے...",
+
+  // Image Upload
+  "upload.title": "کھیت کی تصویر اپلوڈ کریں",
+  "upload.urlError": "براہ کرم ایک تصویر URL درج کریں",
+  "upload.urlInvalid": "براہ کرم http:// یا https:// سے شروع ہونے والا درست URL درج کریں",
+  "upload.analyzeFailed": "تصویر کا تجزیہ ناک ہو گیا۔ تفصیلات کے لیے کنسول چیک کریں۔",
+  "upload.analyzing": "تجزیہ ہو رہا ہے...",
+  "upload.analyzeImage": "تصویر کا تجزیہ کریں",
+  "upload.placeholder": "https://example.com/field-image.jpg",
+
+  // Recommendation Actions
+  "recommendation.prioritizeIrrigation": "آبپاشی کو ترجیح دیں",
+  "recommendation.applyPesticide": "کیڑے مار دوائی استعمال کریں",
+  "recommendation.harvestEarly": "جلد کٹائی کریں",
+
+  // Farmer Action
+  "farmer.hoursSuffix": " گھنٹے",
+
+  // Crop Names (for raw API data)
+  "crop.wheat": "گندم",
+  "crop.rice": "چاول",
+  "crop.cotton": "کپاس",
+  "crop.sugarcane": "گنا",
+  "crop.pulses": "دلیہ",
+  "crop.berseem": "بیرسیم",
+  "crop.mustard": "سرسوں",
+
+  // Season Names
+  "crop.season.rabi": "ربیع (سردی)",
+  "crop.season.kharif": "خریف (گرمی)",
+  "crop.season.annual": "سالانہ",
+
+  // Anomaly Types
+  "anomaly.type.water_stress": "پانی کا تناؤ",
+  "anomaly.type.pest_infestation": "کیڑوں کا حملہ",
+  "anomaly.type.nutrient_deficiency": "غذائی کمزوری",
+  "anomaly.type.fungal_infection": "فنگل انفیکشن",
 
   // Language
   "lang.en": "EN",

@@ -57,7 +57,7 @@ export default function EvidenceCard({ evidence, fieldId }) {
       <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)] mb-4 pb-3 border-b border-[var(--card-border)]">
         <Activity className="w-4 h-4 text-[var(--cyan)]" />
         {t('evidence.title')}
-        <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-[var(--cyan)]">
+        <span className="ms-auto inline-flex items-center gap-1.5 text-xs font-medium text-[var(--cyan)]">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--cyan)] animate-pulse-cyan" />
           {t('evidence.live')}
         </span>

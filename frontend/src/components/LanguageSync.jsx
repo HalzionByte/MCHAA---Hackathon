@@ -10,7 +10,7 @@ export default function LanguageSync() {
     const html = document.documentElement;
     html.lang = lang;
     html.dir = lang === 'ur' ? 'rtl' : 'ltr';
-    html.className = `${lang === 'ur' ? 'font-noto' : 'font-inter'} antialiased`;
+    document.body.classList.toggle('font-urdu', lang === 'ur');
   }, [lang]);
 
   return null;

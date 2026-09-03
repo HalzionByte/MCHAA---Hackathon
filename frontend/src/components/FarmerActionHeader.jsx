@@ -34,8 +34,8 @@ export default function FarmerActionHeader({ farmerDecision }) {
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-5 relative overflow-hidden"
-      style={{ borderLeft: `4px solid ${colors.border}`, background: colors.bg }}
+      className="glass-card p-5 relative overflow-hidden border-s-4"
+      style={{ borderInlineStartColor: colors.border, background: colors.bg }}
     >
       <div className="flex items-start gap-4">
         <span className="text-3xl flex-shrink-0 mt-0.5">{status_emoji}</span>
@@ -52,7 +52,7 @@ export default function FarmerActionHeader({ farmerDecision }) {
           style={{ background: `${colors.border}18`, color: colors.text }}
         >
           <Clock className="w-3.5 h-3.5" />
-          {urgency_hours}h
+          {urgency_hours}{t('farmer.hoursSuffix')}
         </div>
       </div>
     </motion.div>

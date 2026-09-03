@@ -24,6 +24,13 @@ const cropEmojis = {
   sugarcane: '🎋',
 };
 
+const cropNameKeys = {
+  wheat: 'crop.wheat',
+  rice: 'crop.rice',
+  cotton: 'crop.cotton',
+  sugarcane: 'crop.sugarcane',
+};
+
 function SidebarSkeleton() {
   return (
     <div className="space-y-6">
@@ -66,7 +73,7 @@ export default function FieldPage() {
   const { fieldId } = useParams();
   const router = useRouter();
   const audioRef = useRef(null);
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showCropSelector, setShowCropSelector] = useState(false);
   const [field, setField] = useState(null);
@@ -154,7 +161,7 @@ export default function FieldPage() {
             onClick={() => router.push('/')}
             className="flex items-center justify-center w-10 h-10 rounded-lg border border-[var(--card-border)] bg-[var(--card-surface)] hover:bg-[var(--card-border)] transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className={`w-5 h-5 ${lang === 'ur' ? 'rotate-180' : ''}`} />
           </button>
           <div>
             <h1 className="text-2xl font-bold text-[var(--text-primary)]">
@@ -166,7 +173,7 @@ export default function FieldPage() {
                 className="flex items-center gap-2 mt-1 text-base text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer group"
               >
                 <span className="text-xl">{cropEmojis[field.crop_type] || '🌱'}</span>
-                <span className="capitalize">{field.crop_type}</span>
+                <span className="capitalize">{cropNameKeys[field.crop_type] ? t(cropNameKeys[field.crop_type]) : field.crop_type}</span>
                 <span className="text-sm text-[var(--cyan)] opacity-0 group-hover:opacity-100 transition-opacity">
                   {t('field.tapToChange')}
                 </span>
@@ -219,7 +226,7 @@ export default function FieldPage() {
           transition={{ type: 'spring', damping: 15, stiffness: 200 }}
           onClick={handleVoicePlay}
           disabled={voiceLoading}
-          className="fixed bottom-24 right-6 z-30 flex items-center justify-center w-16 h-16 rounded-full shadow-lg transition-all"
+          className="fixed bottom-24 end-6 z-30 flex items-center justify-center w-16 h-16 rounded-full shadow-lg transition-all"
           style={{
             background: voicePlaying ? 'var(--crimson)' : 'var(--cyan)',
             color: 'var(--bg-main)',
@@ -227,7 +234,7 @@ export default function FieldPage() {
               ? '0 4px 20px rgba(239,68,68,0.4)'
               : '0 4px 20px rgba(6,182,212,0.4)',
           }}
-          aria-label={voicePlaying ? 'Pause voice alert' : 'Play voice alert'}
+          aria-label={voicePlaying ? t('audio.pauseAlert') : t('audio.playAlert')}
         >
           {voiceLoading ? (
             <div className="animate-spin w-6 h-6 border-2 border-current border-t-transparent rounded-full" />
@@ -248,7 +255,7 @@ export default function FieldPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed bottom-28 right-24 z-30 flex items-end gap-0.5"
+            className="fixed bottom-28 end-24 z-30 flex items-end gap-0.5"
             style={{ height: 32 }}
           >
             {[1, 2, 3, 4].map((i) => (

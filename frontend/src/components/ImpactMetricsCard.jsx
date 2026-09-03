@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 const metrics = [];
 
 export default function ImpactMetricsCard({ impactMetrics }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   if (!impactMetrics) return null;
 
   const metrics = [
@@ -35,7 +35,7 @@ export default function ImpactMetricsCard({ impactMetrics }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
+      initial={{ opacity: 0, x: lang === 'ur' ? -20 : 20 }}
       animate={{ opacity: 1, x: 0 }}
       className="glass-card p-5"
     >

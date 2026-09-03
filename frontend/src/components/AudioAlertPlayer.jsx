@@ -76,14 +76,14 @@ export default function AudioAlertPlayer({ anomalyId }) {
             opacity: audioError ? 0.5 : 1,
             cursor: audioError ? 'not-allowed' : 'pointer',
           }}
-          aria-label={isPlaying ? 'Pause audio alert' : 'Play audio alert'}
+          aria-label={isPlaying ? t('audio.pauseAlert') : t('audio.playAlert')}
         >
           {loading ? (
             <div className="animate-spin w-6 h-6 border-2 border-current border-t-transparent rounded-full" />
           ) : isPlaying ? (
             <Pause className="w-7 h-7" />
           ) : (
-            <Play className="w-7 h-7 ml-0.5" />
+            <Play className="w-7 h-7 ms-0.5" />
           )}
         </button>
 
@@ -118,7 +118,7 @@ export default function AudioAlertPlayer({ anomalyId }) {
         </AnimatePresence>
 
         {/* Zone Label */}
-        <div className="flex-1 min-w-0 ml-2">
+        <div className="flex-1 min-w-0 ms-2">
           <p className="text-lg font-bold text-[var(--text-primary)] truncate">
             {audioError ? t('audio.unavailable') : t('audio.voiceAlert')}
           </p>

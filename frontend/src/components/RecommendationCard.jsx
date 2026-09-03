@@ -4,23 +4,34 @@ import { motion } from 'framer-motion';
 import { AlertTriangle, Clock, CheckCircle, Droplets, Bug, Scissors, Lightbulb } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
-const priorityConfig = {
-  1: { label: 'Urgent', icon: AlertTriangle, color: 'var(--crimson)', bg: 'rgba(239,68,68,0.15)', slaHours: 24 },
-  2: { label: 'High', icon: Clock, color: 'var(--amber)', bg: 'rgba(245,158,11,0.15)', slaHours: 48 },
-  3: { label: 'Medium', icon: CheckCircle, color: 'var(--emerald)', bg: 'rgba(16,185,129,0.15)', slaHours: 168 },
-};
-
 const actionIcons = {
   prioritize_irrigation: Droplets,
   apply_pesticide: Bug,
   harvest_early: Scissors,
 };
 
+const actionTranslationKeys = {
+  prioritize_irrigation: 'recommendation.prioritizeIrrigation',
+  apply_pesticide: 'recommendation.applyPesticide',
+  harvest_early: 'recommendation.harvestEarly',
+};
+
 export default function RecommendationCard({ recommendation, createdAt }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+
+  const priorityConfig = {
+    1: { label: t('recommendation.urgent'), icon: AlertTriangle, color: 'var(--crimson)', bg: 'rgba(239,68,68,0.15)', slaHours: 24 },
+    2: { label: t('recommendation.high'), icon: Clock, color: 'var(--amber)', bg: 'rgba(245,158,11,0.15)', slaHours: 48 },
+    3: { label: t('recommendation.medium'), icon: CheckCircle, color: 'var(--emerald)', bg: 'rgba(16,185,129,0.15)', slaHours: 168 },
+  };
+
   const config = priorityConfig[recommendation.priority] || priorityConfig[3];
   const PriorityIcon = config.icon;
   const ActionIcon = actionIcons[recommendation.action] || Lightbulb;
+
+  const actionLabel = actionTranslationKeys[recommendation.action]
+    ? t(actionTranslationKeys[recommendation.action])
+    : recommendation.action.replace(/_/g, ' ');
 
   function formatCountdown(hoursRemaining) {
     if (hoursRemaining <= 0) return t('recommendation.overdue');
@@ -46,12 +57,12 @@ export default function RecommendationCard({ recommendation, createdAt }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
+      initial={{ opacity: 0, x: lang === 'ur' ? -20 : 20 }}
       animate={{ opacity: 1, x: 0 }}
       className="glass-card p-5 relative overflow-hidden"
     >
       {/* Priority Badge (top-right) */}
-      <div className="absolute top-3 right-3">
+      <div className="absolute top-3 end-3">
         <span className="badge" style={{ background: config.bg, color: config.color }}>
           <PriorityIcon className="w-3 h-3 mr-1" />
           {config.label}
@@ -72,7 +83,7 @@ export default function RecommendationCard({ recommendation, createdAt }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-[var(--text-primary)] capitalize">
-            {recommendation.action.replace(/_/g, ' ')}
+            {actionLabel}
           </p>
           <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
             {recommendation.description}

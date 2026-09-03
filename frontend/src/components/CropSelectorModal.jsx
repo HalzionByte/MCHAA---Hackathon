@@ -20,6 +20,19 @@ const cropEmojis = {
   sugarcane: '🎋',
 };
 
+const cropNameKeys = {
+  wheat: 'crop.wheat',
+  rice: 'crop.rice',
+  cotton: 'crop.cotton',
+  sugarcane: 'crop.sugarcane',
+};
+
+const seasonKeys = {
+  Rabi: 'crop.season.rabi',
+  Kharif: 'crop.season.kharif',
+  Annual: 'crop.season.annual',
+};
+
 export default function CropSelectorModal({ isOpen, onClose, fieldId, currentCropType, onCropChanged }) {
   const { t } = useLanguage();
   const [crops, setCrops] = useState([]);
@@ -68,7 +81,7 @@ export default function CropSelectorModal({ isOpen, onClose, fieldId, currentCro
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 cursor-pointer"
           style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
           onClick={(e) => { if (e.target === e.currentTarget && !confirmation) onClose(); }}
         >
@@ -84,8 +97,8 @@ export default function CropSelectorModal({ isOpen, onClose, fieldId, currentCro
             {!confirmation && (
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 flex items-center justify-center w-12 h-12 rounded-full bg-[var(--card-border)] hover:bg-[var(--text-muted)] transition-colors text-[var(--text-primary)]"
-                aria-label="Close"
+                className="absolute top-4 end-4 flex items-center justify-center w-12 h-12 rounded-full bg-[var(--card-border)] hover:bg-[var(--text-muted)] transition-colors text-[var(--text-primary)]"
+                aria-label={t('crop.close')}
               >
                 <X className="w-6 h-6" />
               </button>
@@ -160,7 +173,7 @@ export default function CropSelectorModal({ isOpen, onClose, fieldId, currentCro
                             {/* Current Badge */}
                             {isCurrent && (
                               <span
-                                className="absolute top-2 right-2 text-xs font-bold px-2 py-0.5 rounded-full"
+                                className="absolute top-2 end-2 text-xs font-bold px-2 py-0.5 rounded-full"
                                 style={{ background: `${style.ring}30`, color: style.ring }}
                               >
                                 {t('crop.current')}
@@ -172,7 +185,7 @@ export default function CropSelectorModal({ isOpen, onClose, fieldId, currentCro
 
                             {/* Crop Name */}
                             <span className="text-lg font-bold text-[var(--text-primary)] block">
-                              {crop.name}
+                              {cropNameKeys[crop.crop_id] ? t(cropNameKeys[crop.crop_id]) : crop.name}
                             </span>
 
                             {/* Local Name */}
@@ -188,7 +201,7 @@ export default function CropSelectorModal({ isOpen, onClose, fieldId, currentCro
                                 color: crop.season === 'Rabi' ? 'var(--cyan)' : 'var(--amber)',
                               }}
                             >
-                              {crop.season}
+                              {seasonKeys[crop.season] ? t(seasonKeys[crop.season]) : crop.season}
                             </span>
                           </motion.button>
                         );

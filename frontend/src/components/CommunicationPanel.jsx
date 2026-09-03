@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 export default function CommunicationPanel({ voiceAudioUrl, smsText }) {
   const audioRef = useRef(null);
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioError, setAudioError] = useState(false);
 
@@ -22,7 +22,7 @@ export default function CommunicationPanel({ voiceAudioUrl, smsText }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
+      initial={{ opacity: 0, x: lang === 'ur' ? -20 : 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.1 }}
       className="glass-card p-5"

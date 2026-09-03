@@ -101,7 +101,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm cursor-pointer"
         onClick={onClose}
       >
         <motion.div
@@ -183,7 +183,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                       <img src={imagePreview} alt={t('analysis.preview')} className="w-full max-h-64 object-cover rounded-lg" />
                       <button
                         onClick={() => { setImageFile(null); setImagePreview(null); }}
-                        className="absolute top-2 right-2 p-1 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                        className="absolute top-2 end-2 p-1 rounded-full bg-black/50 hover:bg-black/70 text-white"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -198,7 +198,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                         onClick={() => selectSampleImage(img.url)}
                         className="relative group overflow-hidden rounded-lg border border-[var(--card-border)]"
                       >
-                        <img src={img.url} alt={img.label} className="w-24 h-20 object-cover" />
+                        <img src={img.url} alt={t(img.key)} className="w-24 h-20 object-cover" />
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="text-xs text-white font-medium">{t('analysis.useSample', { label: t(img.key) })}</span>
                         </div>

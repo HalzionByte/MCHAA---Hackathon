@@ -76,7 +76,7 @@ export default function AnomalyPage() {
           onClick={() => router.back()}
           className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-6"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className={`w-4 h-4 ${lang === 'ur' ? 'rotate-180' : ''}`} />
           {t('anomaly.back')}
         </button>
         <div className="glass-card p-8 text-center text-[var(--text-muted)]">
@@ -100,7 +100,7 @@ export default function AnomalyPage() {
             onClick={() => router.back()}
             className="flex items-center justify-center w-9 h-9 rounded-lg border border-[var(--card-border)] bg-[var(--card-surface)] hover:bg-[var(--card-border)] transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className={`w-4 h-4 ${lang === 'ur' ? 'rotate-180' : ''}`} />
           </button>
           <div>
             <h1 className="text-xl font-bold text-[var(--text-primary)]">
@@ -108,7 +108,7 @@ export default function AnomalyPage() {
             </h1>
             <p className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
               <Sprout className="w-3.5 h-3.5" />
-              {anomaly.anomaly_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              {t(`anomaly.type.${anomaly.anomaly_type}`) || anomaly.anomaly_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
               <span className="text-[var(--card-border)]">·</span>
               {t('anomaly.zone')} {anomaly.detected_region?.zone || '?'}
               <span className="text-[var(--card-border)]">·</span>

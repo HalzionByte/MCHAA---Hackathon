@@ -82,6 +82,8 @@ export default {
   "audio.tapToPlay": "Tap play to listen",
   "audio.playing": "Playing now...",
   "audio.unavailable": "Audio unavailable",
+  "audio.playAlert": "Play audio alert",
+  "audio.pauseAlert": "Pause audio alert",
 
   // Analysis Flow
   "analysis.title": "Analyze Field Image",
@@ -114,6 +116,7 @@ export default {
   "crop.selectCrop": "Select Crop",
   "crop.selected": "{{name}} Selected!",
   "crop.current": "Current",
+  "crop.close": "Close",
 
   // Crop Encyclopedia
   "crop.guide": "Crop Guide",
@@ -159,6 +162,46 @@ export default {
   "severity.critical": "Critical",
   "severity.moderate": "Moderate",
   "severity.low": "Low",
+
+  // Anomaly Detail
+  "anomaly.loading": "Loading anomaly data...",
+
+  // Image Upload
+  "upload.title": "Upload Field Image",
+  "upload.urlError": "Please enter an image URL",
+  "upload.urlInvalid": "Please enter a valid URL starting with http:// or https://",
+  "upload.analyzeFailed": "Failed to analyze image. Check console for details.",
+  "upload.analyzing": "Analyzing...",
+  "upload.analyzeImage": "Analyze Image",
+  "upload.placeholder": "https://example.com/field-image.jpg",
+
+  // Recommendation Actions
+  "recommendation.prioritizeIrrigation": "Prioritize Irrigation",
+  "recommendation.applyPesticide": "Apply Pesticide",
+  "recommendation.harvestEarly": "Harvest Early",
+
+  // Farmer Action
+  "farmer.hoursSuffix": "h",
+
+  // Crop Names (for raw API data)
+  "crop.wheat": "Wheat / گندم",
+  "crop.rice": "Rice / چاول",
+  "crop.cotton": "Cotton / کپاس",
+  "crop.sugarcane": "Sugarcane / گنا",
+  "crop.pulses": "Pulses / دلیہ",
+  "crop.berseem": "Berseem / بیرسیم",
+  "crop.mustard": "Mustard / سرسوں",
+
+  // Season Names
+  "crop.season.rabi": "Rabi (Winter)",
+  "crop.season.kharif": "Kharif (Summer)",
+  "crop.season.annual": "Annual",
+
+  // Anomaly Types
+  "anomaly.type.water_stress": "Water Stress",
+  "anomaly.type.pest_infestation": "Pest Infestation",
+  "anomaly.type.nutrient_deficiency": "Nutrient Deficiency",
+  "anomaly.type.fungal_infection": "Fungal Infection",
 
   // Language
   "lang.en": "EN",

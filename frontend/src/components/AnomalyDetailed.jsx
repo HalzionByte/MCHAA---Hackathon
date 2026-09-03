@@ -7,8 +7,10 @@ import DiagnosisCard from './DiagnosisCard';
 import RecommendationCard from './RecommendationCard';
 import HealthTimeline from './HealthTimeline';
 import { getSeverityColor, getSeverityLabel, getSeverityBg } from '../lib/severity';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function AnomalyDetailed({ anomalyId }) {
+  const { t, lang } = useLanguage();
   const [anomaly, setAnomaly] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,30 +28,30 @@ export default function AnomalyDetailed({ anomalyId }) {
     loadAnomaly();
   }, [anomalyId]);
 
-  if (loading) return <div className="p-8 text-center text-muted">Loading anomaly data...</div>;
-  if (!anomaly) return <div className="p-8 text-center text-muted">Anomaly not found</div>;
+  if (loading) return <div className="p-8 text-center text-muted">{t('anomaly.loading')}</div>;
+  if (!anomaly) return <div className="p-8 text-center text-muted">{t('anomaly.notFound')}</div>;
 
   const severity = anomaly.severity;
   const severityColor = getSeverityColor(severity);
-  const severityLabel = getSeverityLabel(severity);
+  const severityLabel = getSeverityLabel(severity, lang);
   const severityBg = getSeverityBg(severity);
 
   return (
     <div className="p-6">
       <header className="mb-6">
-        <h2 className="text-2xl font-bold mb-2">Anomaly Analysis</h2>
+        <h2 className="text-2xl font-bold mb-2">{t('anomaly.analysis')}</h2>
         <p className="text-muted">#{anomaly.anomaly_id} • {anomaly.detected_region.zone} • {anomaly.anomaly_type.replace('_', ' ')}</p>
       </header>
 
       <div className="glass p-5 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div>
-            <span className="badge badge-alert">Active</span>
+            <span className="badge badge-alert">{t('anomaly.active')}</span>
             <span className="badge" style={{ background: severityBg, color: severityColor }}>
               {severityLabel} ({(severity * 100).toFixed(0)}%)
             </span>
           </div>
-          <span className="text-sm text-muted">AI Confidence: {(anomaly.confidence * 100).toFixed(0)}%</span>
+          <span className="text-sm text-muted">{t('anomaly.confidence', { value: (anomaly.confidence * 100).toFixed(0) })}</span>
         </div>
         <div className="progress-bar">
           <div 
@@ -57,7 +59,7 @@ export default function AnomalyDetailed({ anomalyId }) {
             style={{ width: `${severity * 100}%`, backgroundColor: severityColor }}
           ></div>
         </div>
-        <p className="text-xs text-muted mt-2">Severity progression: {(severity * 100).toFixed(0)}%</p>
+        <p className="text-xs text-muted mt-2">{t('anomaly.severityProgression', { value: (severity * 100).toFixed(0) })}</p>
       </div>
 
       <div className="bento-grid">

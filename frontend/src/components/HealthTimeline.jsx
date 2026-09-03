@@ -19,14 +19,14 @@ function getStatus(ndvi) {
   return 'stressed';
 }
 
-function formatDate(dateStr) {
+function formatDate(dateStr, lang = 'en') {
   const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-US', { month: 'short', day: 'numeric' });
 }
 
-function CustomTooltip({ active, payload, label, history, statusConfig }) {
+function CustomTooltip({ active, payload, label, formattedHistory, statusConfig }) {
   if (!active || !payload?.length) return null;
-  const entry = history?.find(d => formatDate(d.date) === label);
+  const entry = formattedHistory?.find(d => d.formattedDate === label);
   const status = entry ? statusConfig[entry.status] || statusConfig.unknown : null;
   const StatusIcon = status?.icon;
   return (
@@ -54,7 +54,7 @@ function CustomTooltip({ active, payload, label, history, statusConfig }) {
 }
 
 export default function HealthTimeline({ fieldId }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [selectedMetrics, setSelectedMetrics] = useState(['ndvi', 'soil_moisture']);
   const [history, setHistory] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -73,6 +73,11 @@ export default function HealthTimeline({ fieldId }) {
     stressed: { label: t('timeline.stressed'), color: 'var(--crimson)', icon: AlertTriangle, bg: 'rgba(239,68,68,0.15)' },
     unknown: { label: t('timeline.noDataLabel'), color: 'var(--text-muted)', icon: Minus, bg: 'transparent' },
   };
+
+  const formattedHistory = history?.map(d => ({
+    ...d,
+    formattedDate: formatDate(d.date, lang),
+  }));
 
   useEffect(() => {
     async function loadHistory() {
@@ -154,8 +159,8 @@ export default function HealthTimeline({ fieldId }) {
       <AnimatePresence>
         {selectedMetrics.map((metricKey) => {
           const config = metricConfig[metricKey];
-          const data = history.map(d => ({
-            date: formatDate(d.date),
+          const data = formattedHistory.map(d => ({
+            date: d.formattedDate,
             value: d[metricKey],
             fullDate: d.date
           })).filter(d => d.value !== null);
@@ -204,7 +209,7 @@ export default function HealthTimeline({ fieldId }) {
                       tickFormatter={v => v.toFixed(metricKey === 'ndvi' ? 2 : 0)}
                     />
                     <Tooltip
-                      content={<CustomTooltip history={history} statusConfig={statusConfig} />}
+                      content={<CustomTooltip formattedHistory={formattedHistory} statusConfig={statusConfig} />}
                     />
                     <Area
                       type="monotone"
