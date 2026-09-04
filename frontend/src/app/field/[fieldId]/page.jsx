@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Upload, AlertTriangle, Volume2, Pause, MapPin, RotateCcw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Upload, AlertTriangle, MapPin, RotateCcw } from 'lucide-react';
 import AnalysisFlow from '../../../components/AnalysisFlow';
 import EvidenceCard from '../../../components/EvidenceCard';
 import DiagnosisCard from '../../../components/DiagnosisCard';
@@ -86,7 +85,6 @@ export default function FieldPage() {
 
   // Voice play state (browser speechSynthesis)
   const [voicePlaying, setVoicePlaying] = useState(false);
-  const [voiceLoading, setVoiceLoading] = useState(false);
 
   const fieldVoiceText = React.useMemo(() => {
     if (!field || !anomaly) return '';
@@ -160,22 +158,8 @@ export default function FieldPage() {
     setDrawnFieldName(null);
   }, []);
 
-  const handleVoicePlay = () => {
-    if (!fieldVoiceText) return;
-    if (voicePlaying) {
-      window.speechSynthesis.cancel();
-      setVoicePlaying(false);
-      return;
-    }
-    const utter = new SpeechSynthesisUtterance(fieldVoiceText);
-    utter.lang = lang === 'ur' ? 'ur-PK' : 'en-US';
-    utter.onend = () => setVoicePlaying(false);
-    window.speechSynthesis.speak(utter);
-    setVoicePlaying(true);
-  };
-
   return (
-    <div className="max-w-7xl mx-auto p-6" style={{ paddingBottom: anomaly ? 120 : 24 }}>
+    <div className="max-w-7xl mx-auto p-6" style={{ paddingBottom: anomaly ? 100 : 24 }}>
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -265,59 +249,6 @@ export default function FieldPage() {
         </div>
       </div>
 
-      {/* Floating Voice Play Button */}
-      {anomaly && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', damping: 15, stiffness: 200 }}
-          onClick={handleVoicePlay}
-          disabled={voiceLoading}
-          className="fixed bottom-24 end-6 z-30 flex items-center justify-center w-16 h-16 rounded-full shadow-lg transition-all"
-          style={{
-            background: voicePlaying ? 'var(--crimson)' : 'var(--cyan)',
-            color: 'var(--bg-main)',
-            boxShadow: voicePlaying
-              ? '0 4px 20px rgba(239,68,68,0.4)'
-              : '0 4px 20px rgba(6,182,212,0.4)',
-          }}
-          aria-label={voicePlaying ? t('audio.pauseAlert') : t('audio.playAlert')}
-        >
-          {voiceLoading ? (
-            <div className="animate-spin w-6 h-6 border-2 border-current border-t-transparent rounded-full" />
-          ) : voicePlaying ? (
-            <div className="flex items-center gap-1">
-              <Pause className="w-6 h-6" />
-            </div>
-          ) : (
-            <Volume2 className="w-6 h-6" />
-          )}
-        </motion.button>
-      )}
-
-      {/* Floating Voice Equalizer */}
-      <AnimatePresence>
-        {voicePlaying && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed bottom-28 end-24 z-30 flex items-end gap-0.5"
-            style={{ height: 32 }}
-          >
-            {[1, 2, 3, 4].map((i) => (
-              <motion.div
-                key={i}
-                className="w-1 rounded-full"
-                style={{ background: 'var(--cyan)' }}
-                animate={{ height: [4, 20, 4] }}
-                transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1 }}
-              />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Crop Selector Modal */}
       <CropSelectorModal
         isOpen={showCropSelector}
@@ -337,7 +268,14 @@ export default function FieldPage() {
       )}
 
       {/* Audio Alert Player */}
-      {anomaly && <AudioAlertPlayer text={fieldVoiceText} />}
+      {anomaly && (
+        <AudioAlertPlayer
+          text={fieldVoiceText}
+          playing={voicePlaying}
+          onPlay={() => setVoicePlaying(true)}
+          onPause={() => setVoicePlaying(false)}
+        />
+      )}
     </div>
   );
 }

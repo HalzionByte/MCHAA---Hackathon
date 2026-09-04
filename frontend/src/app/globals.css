@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import "leaflet/dist/leaflet.css";
-@import "leaflet-draw/dist/leaflet.draw.css";
 
 @theme inline {
   --font-sans: var(--font-inter);

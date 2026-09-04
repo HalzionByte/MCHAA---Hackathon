@@ -1,4 +1,6 @@
 import "./globals.css";
+import 'leaflet/dist/leaflet.css';
+import 'leaflet-draw/dist/leaflet.draw.css';
 import { Inter, Noto_Nastaliq_Urdu } from 'next/font/google';
 import { LanguageProvider } from '../context/LanguageContext';
 import LanguageSync from '../components/LanguageSync';
