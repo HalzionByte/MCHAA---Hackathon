@@ -1,14 +1,18 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { getFarm } from '../api/api';
+import dynamic from 'next/dynamic';
+import { getFarm, deleteField } from '../api/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MapPin, AlertTriangle, Upload, Clock, CheckCircle2, Leaf, Sprout } from 'lucide-react';
+import { MapPin, AlertTriangle, Upload, CheckCircle2, Leaf, Sprout, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import AnalysisFlow from './AnalysisFlow';
 import AudioAlertPlayer from './AudioAlertPlayer';
 import LanguageToggle from './LanguageToggle';
 import { useLanguage } from '../context/LanguageContext';
+
+const HomeMap = dynamic(() => import('./HomeMap'), { ssr: false });
 
 const cropEmojis = {
   wheat: '🌾',
@@ -24,29 +28,88 @@ const cropNameKeys = {
   sugarcane: 'crop.sugarcane',
 };
 
-function FieldCard({ field }) {
+function DeleteFieldModal({ isOpen, field, onConfirm, onCancel, deleting }) {
+  const { t } = useLanguage();
+  if (!isOpen || !field) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[2000] flex items-center justify-center p-4"
+        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+        onClick={(e) => e.target === e.currentTarget && !deleting && onCancel()}
+      >
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="glass-card p-6 w-full max-w-md space-y-5"
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">Delete Field</h2>
+          </div>
+
+          <p className="text-sm text-[var(--text-muted)]">
+            Are you sure you want to delete <span className="font-medium text-[var(--text-primary)]">{field.name}</span>?
+            This will permanently remove all its analysis history, anomalies, and evidence data. This action cannot be undone.
+          </p>
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              onClick={onCancel}
+              disabled={deleting}
+              className="px-4 py-2 rounded-lg text-sm font-medium border border-[var(--card-border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-surface)] transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={deleting}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[var(--crimson)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {deleting ? (
+                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+function FieldCard({ field, onDelete }) {
   const { t } = useLanguage();
   const isAlert = field.status === 'alert';
   const emoji = cropEmojis[field.crop_type] || '🌱';
   const cropNameKey = cropNameKeys[field.crop_type];
 
-  function formatRelativeTime(dateStr) {
-    if (!dateStr) return t('status.neverScanned');
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const hours = Math.floor(diff / 3600000);
-    if (hours < 1) return t('status.justNow');
-    if (hours < 24) return t('status.hoursAgo', { hours });
-    const days = Math.floor(hours / 24);
-    return t('status.daysAgo', { days });
-  }
-
   return (
     <Link
       href={`/field/${field.field_id}`}
-      className="glass-card card-hover p-6 flex flex-col gap-5 min-h-[220px]"
+      className="relative glass-card card-hover p-6 flex flex-col gap-5 min-h-[220px]"
     >
       {/* Traffic Light + Field Name Row */}
       <div className="flex items-center gap-5">
+        {/* Delete button — top-right of card */}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (onDelete) onDelete(field);
+          }}
+          className="absolute top-3 end-3 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--crimson)] hover:bg-[var(--crimson)]/10 transition-colors z-10"
+          title={`Delete ${field.name}`}
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+
         {/* Giant Traffic Light */}
         <div className="flex-shrink-0 relative">
           <div
@@ -99,10 +162,6 @@ function FieldCard({ field }) {
             </>
           )}
         </span>
-        <span className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
-          <Clock className="w-4 h-4" />
-          {formatRelativeTime(field.last_analyzed)}
-        </span>
       </div>
     </Link>
   );
@@ -114,6 +173,8 @@ export default function FarmOverview({ farmId }) {
   const [farm, setFarm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function loadFarm() {
@@ -134,15 +195,35 @@ export default function FarmOverview({ farmId }) {
     return farm.fields.some(f => f.status === 'alert');
   }, [farm]);
 
-  const activeAnomalyId = useMemo(() => {
-    if (!farm?.fields) return null;
-    for (const f of farm.fields) {
-      if (f.status === 'alert' && f.anomalies?.length) {
-        return f.anomalies[0].anomaly_id;
-      }
-    }
-    return null;
+  const homeSummary = useMemo(() => {
+    if (!farm?.fields) return '';
+    const alertFields = farm.fields.filter(f => f.status === 'alert');
+    if (!alertFields.length) return '';
+    const lines = alertFields.map(f => {
+      const count = f.anomaly_count;
+      return `Field ${f.name} has ${count} ${count === 1 ? 'issue' : 'issues'}.`;
+    });
+    return lines.join(' ');
   }, [farm]);
+
+  const handleDeleteRequest = (field) => {
+    setDeleteTarget(field);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteField(deleteTarget.field_id);
+      const data = await getFarm(farmId);
+      setFarm(data);
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error('Failed to delete field:', err);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -163,7 +244,7 @@ export default function FarmOverview({ farmId }) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="max-w-7xl mx-auto p-6 space-y-6" style={{ paddingBottom: 120 }}>
       {/* Top Header Bar */}
       <header className="glass-card p-5">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -199,12 +280,15 @@ export default function FarmOverview({ farmId }) {
         </div>
       </header>
 
+      {/* Interactive Map */}
+      <HomeMap />
+
       {/* Field Cards Grid */}
       <div>
         <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-4">{t('farm.yourFields')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {farm.fields.map((field) => (
-            <FieldCard key={field.field_id} field={field} />
+            <FieldCard key={field.field_id} field={field} onDelete={handleDeleteRequest} />
           ))}
         </div>
       </div>
@@ -231,8 +315,17 @@ export default function FarmOverview({ farmId }) {
         />
       )}
 
+      {/* Delete Field Modal */}
+      <DeleteFieldModal
+        isOpen={!!deleteTarget}
+        field={deleteTarget}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => { if (!deleting) setDeleteTarget(null); }}
+        deleting={deleting}
+      />
+
       {/* Audio Player — only if there's an active alert */}
-      {hasActiveAlert && <AudioAlertPlayer anomalyId={activeAnomalyId} />}
+      {hasActiveAlert && <AudioAlertPlayer text={homeSummary} />}
     </div>
   );
 }

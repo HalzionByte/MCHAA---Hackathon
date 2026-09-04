@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Loader2, Image as ImageIcon, Search, Brain, AlertTriangle } from 'lucide-react';
+import { Check, X, Loader2, Image as ImageIcon, Search, Brain, AlertTriangle, ExternalLink } from 'lucide-react';
 import { analyzeImage } from '../api/api';
 import { useLanguage } from '../context/LanguageContext';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const sampleImages = [
   { id: 1, url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=400', key: 'analysis.wheatField' },
@@ -19,7 +21,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
   const [imagePreview, setImagePreview] = useState(null);
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
-  const [completedAnomalyId, setCompletedAnomalyId] = useState(null);
+  const [resultData, setResultData] = useState(null);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -59,6 +61,13 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
     { id: 'diagnose', label: t('analysis.diagnose'), icon: AlertTriangle, desc: t('analysis.diagnoseDesc') },
   ];
 
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
   const runAnalysis = async () => {
     if (!imageFile && !imagePreview) {
       setError(t('analysis.selectImage'));
@@ -74,14 +83,17 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
     }
 
     try {
-      const imageUrl = imageFile ? URL.createObjectURL(imageFile) : imagePreview;
+      const imageUrl = imageFile ? await fileToBase64(imageFile) : imagePreview;
       const result = await analyzeImage(imageUrl, fieldId);
 
       setCurrentStep(3);
       await new Promise(r => setTimeout(r, 800));
 
-      if (result?.anomaly_id) {
-        setCompletedAnomalyId(result.anomaly_id);
+      if (result && result.anomaly_id && UUID_RE.test(result.anomaly_id)) {
+        setResultData(result);
+      } else if (result) {
+        setResultData(result);
+        console.error('Analysis returned result but missing anomaly_id:', result);
       } else {
         setError(t('analysis.unexpectedResult'));
         setCurrentStep(0);
@@ -90,6 +102,12 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
       setError(t('analysis.failed'));
       setCurrentStep(0);
       console.error(err);
+    }
+  };
+
+  const handleViewResults = () => {
+    if (resultData?.anomaly_id && UUID_RE.test(resultData.anomaly_id)) {
+      onComplete(resultData.anomaly_id);
     }
   };
 
@@ -152,7 +170,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
 
           <div className="p-5 space-y-4">
             <AnimatePresence mode="wait">
-              {currentStep === 0 && (
+              {currentStep === 0 && !resultData && (
                 <motion.div key="upload" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                   <p className="text-muted text-center mb-4">{t('analysis.dropzone')}</p>
 
@@ -220,7 +238,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                 </motion.div>
               )}
 
-              {currentStep > 0 && currentStep < 3 && (
+              {currentStep > 0 && currentStep < 3 && !resultData && (
                 <motion.div
                   key={steps[currentStep].id}
                   initial={{ opacity: 0, y: 10 }}
@@ -246,24 +264,32 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                 </motion.div>
               )}
 
-              {currentStep === 3 && (
-                <motion.div key="complete" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-8">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                    className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[var(--cyan)] mb-4"
-                  >
-                    <Check className="w-10 h-10 text-[var(--bg-main)]" />
-                  </motion.div>
-                   <h3 className="text-xl font-bold mb-2">{t('analysis.complete')}</h3>
-                   <p className="text-muted mb-6">{t('analysis.completeMsg')}</p>
-                  <button
-                    onClick={() => onComplete(completedAnomalyId)}
-                    className="btn-primary px-8"
-                  >
-                    {t('analysis.viewResults')}
-                  </button>
+              {currentStep === 3 && resultData && (
+                <motion.div key="results" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4">
+                  <div className="text-center py-4">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                      className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--cyan)] mb-3"
+                    >
+                      <Check className="w-8 h-8 text-[var(--bg-main)]" />
+                    </motion.div>
+                    <h3 className="text-xl font-bold mb-1">{t('analysis.complete')}</h3>
+                    <p className="text-muted text-sm mb-4">{t('analysis.completeMsg')}</p>
+                  </div>
+
+                  <div className="flex gap-3 justify-center pt-2 pb-2">
+                    {resultData.anomaly_id && UUID_RE.test(resultData.anomaly_id) && (
+                      <button onClick={handleViewResults} className="btn-primary px-6 flex items-center gap-2">
+                        {t('analysis.viewResults')}
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-[var(--card-border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-surface)] transition-colors">
+                      Close
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
