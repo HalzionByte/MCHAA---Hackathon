@@ -2,28 +2,26 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Loader2, Image as ImageIcon, Search, Brain, AlertTriangle } from 'lucide-react';
+import { Check, X, Loader2, Image as ImageIcon, Search, Brain, AlertTriangle, ExternalLink } from 'lucide-react';
 import { analyzeImage } from '../api/api';
+import { useLanguage } from '../context/LanguageContext';
 
-const steps = [
-  { id: 'upload', label: 'Upload', icon: ImageIcon, desc: 'Select field image' },
-  { id: 'detect', label: 'Detect', icon: Search, desc: 'Finding anomalies' },
-  { id: 'correlate', label: 'Correlate', icon: Brain, desc: 'Analyzing evidence' },
-  { id: 'diagnose', label: 'Diagnose', icon: AlertTriangle, desc: 'Generating report' },
-];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const sampleImages = [
-  { id: 1, url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=400', label: 'Wheat field' },
-  { id: 2, url: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=400', label: 'Rice paddy' },
-  { id: 3, url: 'https://images.unsplash.com/photo-1530507629858-e4977d30e9e0?auto=format&fit=crop&w=300&q=80', label: 'Dry crop' },
+  { id: 1, url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=400', key: 'analysis.wheatField' },
+  { id: 2, url: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=400', key: 'analysis.ricePaddy' },
+  { id: 3, url: 'https://images.unsplash.com/photo-1530507629858-e4977d30e9e0?auto=format&fit=crop&w=300&q=80', key: 'analysis.dryCrop' },
 ];
 
 export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
+  const { t } = useLanguage();
   const [currentStep, setCurrentStep] = useState(0);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [resultData, setResultData] = useState(null);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -56,9 +54,23 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
     setImageFile(null);
   };
 
+  const steps = [
+    { id: 'upload', label: t('analysis.upload'), icon: ImageIcon, desc: t('analysis.uploadDesc') },
+    { id: 'detect', label: t('analysis.detect'), icon: Search, desc: t('analysis.detectDesc') },
+    { id: 'correlate', label: t('analysis.correlate'), icon: Brain, desc: t('analysis.correlateDesc') },
+    { id: 'diagnose', label: t('analysis.diagnose'), icon: AlertTriangle, desc: t('analysis.diagnoseDesc') },
+  ];
+
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
   const runAnalysis = async () => {
     if (!imageFile && !imagePreview) {
-      setError('Please select an image first');
+      setError(t('analysis.selectImage'));
       return;
     }
 
@@ -71,22 +83,31 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
     }
 
     try {
-      const imageUrl = imageFile ? URL.createObjectURL(imageFile) : imagePreview;
+      const imageUrl = imageFile ? await fileToBase64(imageFile) : imagePreview;
       const result = await analyzeImage(imageUrl, fieldId);
 
       setCurrentStep(3);
       await new Promise(r => setTimeout(r, 800));
 
-      if (result?.anomaly_id) {
-        onComplete(result.anomaly_id);
+      if (result && result.anomaly_id && UUID_RE.test(result.anomaly_id)) {
+        setResultData(result);
+      } else if (result) {
+        setResultData(result);
+        console.error('Analysis returned result but missing anomaly_id:', result);
       } else {
-        setError('Analysis returned unexpected result. Please try again.');
+        setError(t('analysis.unexpectedResult'));
         setCurrentStep(0);
       }
     } catch (err) {
-      setError('Analysis failed. Please try again.');
+      setError(t('analysis.failed'));
       setCurrentStep(0);
       console.error(err);
+    }
+  };
+
+  const handleViewResults = () => {
+    if (resultData?.anomaly_id && UUID_RE.test(resultData.anomaly_id)) {
+      onComplete(resultData.anomaly_id);
     }
   };
 
@@ -98,7 +119,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm cursor-pointer"
         onClick={onClose}
       >
         <motion.div
@@ -109,7 +130,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-5 border-b border-[var(--card-border)] flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Analyze Field Image</h2>
+            <h2 className="text-xl font-semibold">{t('analysis.title')}</h2>
             <button
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-[var(--card-surface)] transition-colors text-muted hover:text-[var(--text-primary)]"
@@ -149,9 +170,9 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
 
           <div className="p-5 space-y-4">
             <AnimatePresence mode="wait">
-              {currentStep === 0 && (
+              {currentStep === 0 && !resultData && (
                 <motion.div key="upload" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                  <p className="text-muted text-center mb-4">Drop a field image or select from samples</p>
+                  <p className="text-muted text-center mb-4">{t('analysis.dropzone')}</p>
 
                   <div
                     onDragEnter={handleDrag}
@@ -171,23 +192,23 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                       className="absolute inset-0 opacity-0 cursor-pointer"
                     />
                     <ImageIcon className="w-12 h-12 mx-auto mb-3 text-muted" />
-                    <p className="text-muted mb-1">Drag & drop or click to upload</p>
-                    <p className="text-xs text-muted">PNG, JPG up to 10MB</p>
+                    <p className="text-muted mb-1">{t('analysis.dragDrop')}</p>
+                    <p className="text-xs text-muted">{t('analysis.fileTypes')}</p>
                   </div>
 
                   {imagePreview && (
                     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative mt-4">
-                      <img src={imagePreview} alt="Preview" className="w-full max-h-64 object-cover rounded-lg" />
+                      <img src={imagePreview} alt={t('analysis.preview')} className="w-full max-h-64 object-cover rounded-lg" />
                       <button
                         onClick={() => { setImageFile(null); setImagePreview(null); }}
-                        className="absolute top-2 right-2 p-1 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                        className="absolute top-2 end-2 p-1 rounded-full bg-black/50 hover:bg-black/70 text-white"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </motion.div>
                   )}
 
-                  <p className="text-xs text-muted text-center mt-4">or choose a sample:</p>
+                  <p className="text-xs text-muted text-center mt-4">{t('analysis.orSample')}</p>
                   <div className="flex gap-2 justify-center flex-wrap mt-2">
                     {sampleImages.map((img) => (
                       <button
@@ -195,9 +216,9 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                         onClick={() => selectSampleImage(img.url)}
                         className="relative group overflow-hidden rounded-lg border border-[var(--card-border)]"
                       >
-                        <img src={img.url} alt={img.label} className="w-24 h-20 object-cover" />
+                        <img src={img.url} alt={t(img.key)} className="w-24 h-20 object-cover" />
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="text-xs text-white font-medium">Use {img.label}</span>
+                          <span className="text-xs text-white font-medium">{t('analysis.useSample', { label: t(img.key) })}</span>
                         </div>
                       </button>
                     ))}
@@ -209,7 +230,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                       disabled={!imagePreview}
                       className="btn-primary px-6"
                     >
-                      Start Analysis
+                      {t('analysis.start')}
                     </button>
                   </div>
 
@@ -217,7 +238,7 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                 </motion.div>
               )}
 
-              {currentStep > 0 && currentStep < 3 && (
+              {currentStep > 0 && currentStep < 3 && !resultData && (
                 <motion.div
                   key={steps[currentStep].id}
                   initial={{ opacity: 0, y: 10 }}
@@ -243,24 +264,32 @@ export default function AnalysisFlow({ fieldId, onComplete, onClose }) {
                 </motion.div>
               )}
 
-              {currentStep === 3 && (
-                <motion.div key="complete" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-8">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                    className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[var(--cyan)] mb-4"
-                  >
-                    <Check className="w-10 h-10 text-[var(--bg-main)]" />
-                  </motion.div>
-                  <h3 className="text-xl font-bold mb-2">Analysis Complete</h3>
-                  <p className="text-muted mb-6">Anomaly detected and diagnosed successfully</p>
-                  <button
-                    onClick={() => onClose()}
-                    className="btn-primary px-8"
-                  >
-                    View Results
-                  </button>
+              {currentStep === 3 && resultData && (
+                <motion.div key="results" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4">
+                  <div className="text-center py-4">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                      className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--cyan)] mb-3"
+                    >
+                      <Check className="w-8 h-8 text-[var(--bg-main)]" />
+                    </motion.div>
+                    <h3 className="text-xl font-bold mb-1">{t('analysis.complete')}</h3>
+                    <p className="text-muted text-sm mb-4">{t('analysis.completeMsg')}</p>
+                  </div>
+
+                  <div className="flex gap-3 justify-center pt-2 pb-2">
+                    {resultData.anomaly_id && UUID_RE.test(resultData.anomaly_id) && (
+                      <button onClick={handleViewResults} className="btn-primary px-6 flex items-center gap-2">
+                        {t('analysis.viewResults')}
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-[var(--card-border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-surface)] transition-colors">
+                      Close
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

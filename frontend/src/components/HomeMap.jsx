@@ -1,25 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
-import { getField } from '../api/api';
+import { useRouter } from 'next/navigation';
 import LocationSearch from './LocationSearch';
 import MapRecenter from './MapRecenter';
 import DrawControl from './DrawControl';
 import CreateFieldModal from './CreateFieldModal';
-import { Sprout, AlertTriangle, Pencil, X } from 'lucide-react';
+import { Pencil, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
-const cropNameKeys = {
-  wheat: 'crop.wheat',
-  rice: 'crop.rice',
-  cotton: 'crop.cotton',
-  sugarcane: 'crop.sugarcane',
-};
-
 function MapLegend() {
-  const { t } = useLanguage();
   return (
     <div className="absolute bottom-4 end-4 field-overlay z-10 min-w-[160px]">
       <div className="flex items-center gap-2 mb-2">
@@ -34,29 +25,15 @@ function MapLegend() {
   );
 }
 
-export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
-  const { t } = useLanguage();
+export default function HomeMap() {
   const router = useRouter();
-  const [field, setField] = useState(null);
+  const { t } = useLanguage();
 
   const [searchTarget, setSearchTarget] = useState(null);
   const [drawingEnabled, setDrawingEnabled] = useState(false);
   const [drawnCoords, setDrawnCoords] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
-  const [polygonError, setPolygonError] = useState(null);
-
-  useEffect(() => {
-    async function loadField() {
-      try {
-        const data = await getField(fieldId);
-        setField(data);
-      } catch (error) {
-        console.error('Failed to load field:', error);
-      }
-    }
-    loadField();
-  }, [fieldId]);
 
   useEffect(() => {
     const style = document.createElement('style');
@@ -73,28 +50,19 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
   }, []);
 
   const handleDrawCreated = useCallback((coords) => {
-    if (!coords || coords.length < 4) {
-      setPolygonError('Please draw at least 4 points to form a valid area.');
-      setTimeout(() => setPolygonError(null), 3500);
-      return;
-    }
-    setPolygonError(null);
     setDrawnCoords(coords);
     setShowCreateModal(true);
     setDrawingEnabled(false);
   }, []);
 
-  const handleFieldCreated = useCallback((newFieldId, analysis) => {
+  const handleFieldCreated = useCallback((fieldId, analysis) => {
     setAnalysisResult(analysis);
     setDrawingEnabled(false);
     // Keep drawnCoords so the drawn polygon stays highlighted
-    getField(newFieldId).then(setField).catch(console.error);
-    if (onAreaAnalyzed) onAreaAnalyzed(analysis);
-    // Redirect to the new field's page after a brief delay
     setTimeout(() => {
-      router.push(`/field/${newFieldId}`);
-    }, 1200);
-  }, [onAreaAnalyzed, router]);
+      router.push(`/field/${fieldId}`);
+    }, 1500);
+  }, [router]);
 
   const handleCreateModalClose = useCallback(() => {
     setShowCreateModal(false);
@@ -107,40 +75,6 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
     setShowCreateModal(false);
   }, []);
 
-  // Reset drawn state when parent signals reset (resetKey changes)
-  useEffect(() => {
-    if (resetKey === null) {
-      setDrawnCoords(null);
-      setAnalysisResult(null);
-    }
-  }, [resetKey]);
-
-  if (!field) {
-    return (
-      <div className="glass-card p-8 text-center text-[var(--text-muted)]">
-        <div className="animate-spin w-8 h-8 border-2 border-[var(--cyan)] border-t-transparent rounded-full mx-auto mb-3" />
-        {t('map.loading')}
-      </div>
-    );
-  }
-
-  const center = field.boundary ? [field.boundary.lat, field.boundary.lng] : [31.5204, 74.3587];
-
-  const fieldPolygon = field.polygon || (field.boundary ? (() => {
-    const radiusKm = 1.5;
-    const points = [];
-    const numPoints = 32;
-    const radiusDeg = radiusKm / 111;
-    for (let i = 0; i < numPoints; i++) {
-      const angle = (i / numPoints) * 2 * Math.PI;
-      points.push([
-        center[0] + radiusDeg * Math.cos(angle),
-        center[1] + radiusDeg * Math.sin(angle)
-      ]);
-    }
-    return points;
-  })() : null);
-
   return (
     <div className="glass-card p-5">
       <div className="mb-3">
@@ -148,7 +82,7 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
       </div>
 
       <div className="relative h-96 w-full rounded-lg overflow-hidden">
-        <MapContainer center={center} zoom={14} maxZoom={20} scrollWheelZoom={!drawingEnabled} className="h-full w-full rounded-lg">
+        <MapContainer center={[31.5204, 74.3587]} zoom={6} maxZoom={20} scrollWheelZoom={!drawingEnabled} className="h-full w-full rounded-lg">
           <TileLayer
             attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -162,7 +96,7 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
             onDrawCreated={handleDrawCreated}
           />
 
-          {/* Highlighted drawn area (analyzed) — only this polygon shows */}
+          {/* Highlighted drawn area (analyzed) */}
           {drawnCoords && !drawingEnabled && (
             <Polygon
               positions={drawnCoords}
@@ -170,18 +104,6 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
               fillColor="var(--cyan)"
               fillOpacity={0.18}
               weight={3}
-            />
-          )}
-
-          {/* Field polygon — only shown when NO drawn area is active */}
-          {fieldPolygon && !drawnCoords && !drawingEnabled && (
-            <Polygon
-              positions={fieldPolygon}
-              color="var(--emerald)"
-              fillColor="var(--emerald)"
-              fillOpacity={0.08}
-              weight={2}
-              dashArray="5, 5"
             />
           )}
 
@@ -200,45 +122,11 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
           </button>
         </div>
 
-        {/* Floating Field Info (bottom-left) */}
-        <div className="absolute bottom-4 start-4 z-[1000] field-overlay">
-          <div className="flex items-center gap-2">
-            <Sprout className="w-4 h-4 text-[var(--emerald)]" />
-            <span className="font-medium text-[var(--text-primary)]">
-              {drawnCoords && analysisResult ? analysisResult.name || 'Drawn Area' : field.name}
-            </span>
-            <span className="text-[var(--text-muted)]">·</span>
-            <span className="text-[var(--text-muted)]">
-              {cropNameKeys[field.crop_type] ? t(cropNameKeys[field.crop_type]) : field.crop_type}
-            </span>
-          </div>
-          {drawnCoords && analysisResult?.evidence && (
-            <div className="flex items-center gap-3 mt-1 text-xs text-[var(--text-muted)]">
-              <span>Soil: {analysisResult.evidence.soil_moisture_percent ?? 'N/A'}%</span>
-              <span>·</span>
-              <span>NDVI Δ: {analysisResult.evidence.vegetation_ndvi_change ?? 'N/A'}</span>
-            </div>
-          )}
-          {!drawnCoords && field.anomalies?.length > 0 && (
-            <div className="flex items-center gap-1 mt-1 text-xs text-[var(--crimson)]">
-              <AlertTriangle className="w-3 h-3" />
-              {t('map.anomalyDetected', { count: field.anomalies.length })}
-            </div>
-          )}
-        </div>
-
         {/* Draw mode indicator */}
         {drawingEnabled && (
           <div className="absolute top-3 start-1/2 -translate-x-1/2 z-[1000] glass px-3 py-1.5 text-xs text-[var(--cyan)] font-medium flex items-center gap-2">
             <Pencil className="w-3 h-3" />
             Click to place points · Click first point to finish
-          </div>
-        )}
-
-        {/* Polygon error toast */}
-        {polygonError && (
-          <div className="absolute top-3 start-1/2 -translate-x-1/2 z-[1000] glass px-3 py-1.5 text-xs text-[var(--crimson)] font-medium">
-            {polygonError}
           </div>
         )}
       </div>

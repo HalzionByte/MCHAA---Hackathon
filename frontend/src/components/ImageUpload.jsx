@@ -2,10 +2,12 @@
 
 import React, { useState } from 'react';
 import { analyzeImage } from '../api/api';
+import { useLanguage } from '../context/LanguageContext';
 
 const URL_REGEX = /^https?:\/\/.+/;
 
 export default function ImageUpload({ fieldId, onAnalyzeComplete }) {
+  const { t } = useLanguage();
   const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -15,11 +17,11 @@ export default function ImageUpload({ fieldId, onAnalyzeComplete }) {
   const handleAnalyze = async (e) => {
     e.preventDefault();
     if (!imageUrl.trim()) {
-      setError('Please enter an image URL');
+      setError(t('upload.urlError'));
       return;
     }
     if (!isValidUrl(imageUrl)) {
-      setError('Please enter a valid URL starting with http:// or https://');
+      setError(t('upload.urlInvalid'));
       return;
     }
     setLoading(true);
@@ -28,7 +30,7 @@ export default function ImageUpload({ fieldId, onAnalyzeComplete }) {
       const result = await analyzeImage(imageUrl, fieldId);
       onAnalyzeComplete?.(result.anomaly_id);
     } catch (err) {
-      setError('Failed to analyze image. Check console for details.');
+      setError(t('upload.analyzeFailed'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -37,11 +39,11 @@ export default function ImageUpload({ fieldId, onAnalyzeComplete }) {
 
   return (
     <div className="glass p-5">
-      <h3 className="card-title">Upload Field Image</h3>
+      <h3 className="card-title">{t('upload.title')}</h3>
       <form onSubmit={handleAnalyze} className="space-y-3">
         <input
           type="text"
-          placeholder="https://example.com/field-image.jpg"
+          placeholder={t('upload.placeholder')}
           value={imageUrl}
           onChange={(e) => setImageUrl(e.target.value)}
           disabled={loading}
@@ -49,7 +51,7 @@ export default function ImageUpload({ fieldId, onAnalyzeComplete }) {
           aria-describedby="url-error"
         />
         <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading ? 'Analyzing...' : 'Analyze Image'}
+          {loading ? t('upload.analyzing') : t('upload.analyzeImage')}
         </button>
         {error && <p id="url-error" className="text-sm text-red-400">{error}</p>}
       </form>

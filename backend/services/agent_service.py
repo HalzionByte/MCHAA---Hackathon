@@ -1,12 +1,21 @@
-"""AI Agent service - orchestrates Claude API with tool calling for diagnosis"""
+"""AI Agent service - orchestrates AI diagnosis using Gemini + tool calling"""
 
 import asyncio
 from services.mock_data import (
     get_mock_soil_data,
     get_mock_weather_data,
     get_mock_historical_weather,
-    get_mock_crop_history
+    get_mock_crop_history,
+    get_crop_by_id,
 )
+from services.live_data import (
+    fetch_all_live_data,
+    get_live_soil,
+    get_live_weather,
+    get_live_ndvi_change,
+    get_or_create_polygon,
+)
+from services.image_analysis import diagnose_with_gemini
 from models import Diagnosis, Evidence, Recommendation, Anomaly
 from sqlalchemy.orm import Session
 import uuid
@@ -19,8 +28,10 @@ try:
 except ImportError:
     client = None
 
+# Module-level field context: populated by run_agent() before the Claude loop
+# so execute_tool() can access field coordinates without a DB session.
+_field_context: dict = {}
 
-# Tool definitions for Claude
 TOOLS = [
     {
         "name": "get_soil_data",
@@ -28,10 +39,7 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "field_id": {
-                    "type": "string",
-                    "description": "The field ID to retrieve soil data for"
-                }
+                "field_id": {"type": "string", "description": "The field ID to retrieve soil data for"}
             },
             "required": ["field_id"]
         }
@@ -42,10 +50,7 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "field_id": {
-                    "type": "string",
-                    "description": "The field ID to retrieve weather data for"
-                }
+                "field_id": {"type": "string", "description": "The field ID to retrieve weather data for"}
             },
             "required": ["field_id"]
         }
@@ -56,14 +61,8 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "field_id": {
-                    "type": "string",
-                    "description": "The field ID to retrieve historical weather for"
-                },
-                "days": {
-                    "type": "integer",
-                    "description": "Number of days of history (default 30)"
-                }
+                "field_id": {"type": "string", "description": "The field ID to retrieve historical weather for"},
+                "days": {"type": "integer", "description": "Number of days of history (default 30)"}
             },
             "required": ["field_id"]
         }
@@ -74,41 +73,63 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "field_id": {
-                    "type": "string",
-                    "description": "The field ID to retrieve crop history for"
-                }
+                "field_id": {"type": "string", "description": "The field ID to retrieve crop history for"}
             },
             "required": ["field_id"]
         }
     }
 ]
 
+
 def execute_tool(tool_name: str, tool_input: dict) -> dict:
-    """Execute mock tools and return results"""
-    field_id = tool_input.get("field_id")
-    
+    """Execute a tool — live data first, mock fallback."""
+    field_id = tool_input.get("field_id", "")
+    ctx = _field_context.get(field_id, {})
+    lat = ctx.get("lat", 31.5204)
+    lng = ctx.get("lng", 74.3587)
+    crop_type = ctx.get("crop_type", "wheat")
+    polyid = ctx.get("polyid")
+
     if tool_name == "get_soil_data":
+        if polyid:
+            live = get_live_soil(polyid)
+            if live is not None:
+                # Merge with mock NPK/pH (not available from Agromonitoring)
+                mock = get_mock_soil_data(field_id)
+                return {**mock, **{k: v for k, v in live.items() if v is not None}}
         return get_mock_soil_data(field_id)
+
     elif tool_name == "get_weather_data":
+        live = get_live_weather(lat, lng)
+        if live is not None:
+            mock = get_mock_weather_data(field_id)
+            return {**mock, **{k: v for k, v in live.items() if v is not None and not k.startswith("_")}}
         return get_mock_weather_data(field_id)
+
     elif tool_name == "get_historical_weather":
         days = tool_input.get("days", 30)
+        live = get_live_weather(lat, lng)
+        if live and live.get("_historical"):
+            hist = live["_historical"]
+            return {
+                "days": days,
+                "avg_temperature_c": hist.get("avg_temperature_c") or 32,
+                "avg_humidity_percent": hist.get("avg_humidity_percent") or 50,
+                "total_rainfall_mm": hist.get("total_rainfall_mm") or 45,
+                "max_temperature_c": hist.get("max_temperature_c") or 38,
+                "min_temperature_c": hist.get("min_temperature_c") or 28,
+            }
         return get_mock_historical_weather(field_id, days)
+
     elif tool_name == "get_crop_history":
         return get_mock_crop_history(field_id)
-    else:
-        return {"error": f"Unknown tool: {tool_name}"}
+
+    return {"error": f"Unknown tool: {tool_name}"}
+
 
 async def run_agent(anomaly_id: str, field_id: str, anomaly_type: str, evidence_data: dict, db: Session = None):
     """
     Run the AI agent to diagnose an anomaly.
-    
-    Process:
-    1. Get anomaly context
-    2. Call Claude API with tool definitions (or fallback mock)
-    3. Execute tools, get results
-    4. Store diagnosis, evidence, recommendation in DB
     """
     should_close_db = False
     if db is None:
@@ -117,13 +138,23 @@ async def run_agent(anomaly_id: str, field_id: str, anomaly_type: str, evidence_
         should_close_db = True
 
     try:
+        # Populate field context for execute_tool()
+        field = db.query(Anomaly.field_id).filter(Anomaly.anomaly_id == anomaly_id).first() if db else None
+        from models import Field
+        field_obj = db.query(Field).filter(Field.field_id == field_id).first() if db else None
+
+        if field_obj:
+            polyid = get_or_create_polygon(field_obj.boundary_lat, field_obj.boundary_lng, field_id)
+            _field_context[field_id] = {
+                "lat": field_obj.boundary_lat,
+                "lng": field_obj.boundary_lng,
+                "crop_type": field_obj.crop_type,
+                "polyid": polyid,
+            }
+
         api_key = os.getenv("CLAUDE_API_KEY")
         if not api_key or not client:
-            # Fallback: use mock diagnosis if API key or anthropic SDK not available
             return generate_mock_diagnosis(anomaly_id, field_id, anomaly_type, evidence_data, db)
-
-
-        # Build initial prompt for Claude
 
         system_prompt = """You are an expert agricultural AI system diagnosing crop health anomalies.
 
@@ -151,8 +182,7 @@ Please investigate this anomaly by:
 6. Recommending an action"""
 
         messages = [{"role": "user", "content": user_message}]
-        
-        # Agentic loop - Claude calls tools until it's done
+
         while True:
             response = client.messages.create(
                 model="claude-3-5-sonnet-20241022",
@@ -161,51 +191,29 @@ Please investigate this anomaly by:
                 tools=TOOLS,
                 messages=messages
             )
-            
-            # Check if Claude wants to use tools
+
             if response.stop_reason == "tool_use":
-                # Process tool calls
                 tool_results = []
-                
                 for content_block in response.content:
                     if content_block.type == "tool_use":
-                        tool_name = content_block.name
-                        tool_input = content_block.input
-                        tool_use_id = content_block.id
-                        
-                        # Execute the tool
-                        tool_result = execute_tool(tool_name, tool_input)
-                        
+                        tool_result = execute_tool(content_block.name, content_block.input)
                         tool_results.append({
                             "type": "tool_result",
-                            "tool_use_id": tool_use_id,
+                            "tool_use_id": content_block.id,
                             "content": json.dumps(tool_result)
                         })
-                
-                # Add assistant response and tool results to messages
                 messages.append({"role": "assistant", "content": response.content})
                 messages.append({"role": "user", "content": tool_results})
-            
             else:
-                # Claude is done with tools, extract diagnosis from final response
                 diagnosis_text = ""
                 for content_block in response.content:
                     if hasattr(content_block, "text"):
                         diagnosis_text += content_block.text
-                
-                # Store diagnosis, evidence, recommendation in DB
-                store_diagnosis_and_recommendation(
-                    anomaly_id, 
-                    field_id, 
-                    diagnosis_text, 
-                    evidence_data, 
-                    db
-                )
+                store_diagnosis_and_recommendation(anomaly_id, field_id, diagnosis_text, evidence_data, db)
                 break
-    
+
     except Exception as e:
         print(f"Claude API error: {e}")
-        # Fallback to mock diagnosis
         return generate_mock_diagnosis(anomaly_id, field_id, anomaly_type, evidence_data, db)
     finally:
         if should_close_db and db:
@@ -213,65 +221,64 @@ Please investigate this anomaly by:
 
 
 def generate_mock_diagnosis(anomaly_id: str, field_id: str, anomaly_type: str, evidence_data: dict, db: Session):
-    """Generate mock diagnosis for testing (no Claude API needed)"""
-    
-    if anomaly_type == "water_stress":
-        cause = "Likely water stress caused by prolonged low soil moisture and insufficient rainfall."
-        confidence = 0.87
-        reasoning = "Low soil moisture (18%) + low rainfall (2mm in 7 days) + high temperature (34°C) + negative vegetation change indicate classic water stress pattern."
-        action = "prioritize_irrigation"
-        priority = 1
-    else:
-        # Fallback for other types
-        cause = f"Anomaly detected: {anomaly_type}"
-        confidence = 0.60
-        reasoning = "Insufficient data for confident diagnosis."
-        action = "investigate"
-        priority = 2
-    
+    """Generate AI-written diagnosis + recommendation using Gemini, then persist to DB."""
+    # Build the vision_result dict expected by diagnose_with_gemini
+    vision_result = {
+        "anomaly_type": anomaly_type,
+        "severity": evidence_data.get("severity", 0.5),
+        "confidence": evidence_data.get("confidence", 0.7),
+        "description": evidence_data.get("image_description", evidence_data.get("description", "No description.")),
+        "detected_pests": evidence_data.get("detected_pests", []),
+        "recommended_actions": evidence_data.get("recommended_actions", []),
+    }
+
+    crop_type = evidence_data.get("crop_type")
+    if not crop_type:
+        try:
+            from models import Field
+            field_obj = db.query(Field).filter(Field.field_id == field_id).first()
+            if field_obj and field_obj.crop_type:
+                crop_type = field_obj.crop_type
+        except Exception as e:
+            print(f"[agent_service] Failed to resolve crop_type: {e}")
+    if not crop_type:
+        crop_type = "wheat"
+    diag = diagnose_with_gemini(vision_result, crop_type)
+
+    # Extract a clean first sentence for probable_cause
+    cause = diag["cause"]
+    confidence = diag["confidence"]
+    reasoning = diag["reasoning"]
+    action_key = diag["action_key"]
+    action_summary = diag["action_summary"]
+    priority = diag["priority"]
+
     store_diagnosis_and_recommendation(
-        anomaly_id,
-        field_id,
-        cause,
-        evidence_data,
-        db,
-        confidence=confidence,
-        reasoning=reasoning,
-        action=action,
-        priority=priority
+        anomaly_id, field_id, cause, evidence_data, db,
+        confidence=confidence, reasoning=reasoning,
+        action=action_key, priority=priority,
+        action_summary=action_summary,
     )
 
-def store_diagnosis_and_recommendation(
-    anomaly_id: str,
-    field_id: str,
-    diagnosis_text: str,
-    evidence_data: dict,
-    db: Session,
-    confidence: float = 0.87,
-    reasoning: str = None,
-    action: str = "prioritize_irrigation",
-    priority: int = 1
-):
+
+def store_diagnosis_and_recommendation(anomaly_id, field_id, diagnosis_text, evidence_data,
+                                       db, confidence=0.87, reasoning=None,
+                                       action="prioritize_irrigation", priority=1,
+                                       action_summary=None):
     """Parse diagnosis text and store in database"""
-    
-    # If no reasoning provided, use the diagnosis text
     if not reasoning:
         reasoning = diagnosis_text
-    
-    # Parse diagnosis text for cause (take first sentence)
     cause = diagnosis_text.split(".")[0] if diagnosis_text else "Unable to determine cause"
-    
-    # Create and store Diagnosis
+
     diagnosis = Diagnosis(
         diagnosis_id=str(uuid.uuid4()),
         anomaly_id=anomaly_id,
-        probable_cause=cause[:500],  # Limit to 500 chars
+        probable_cause=cause[:500],
         confidence=confidence,
         reasoning=reasoning
     )
     db.add(diagnosis)
-    
-    # Create and store Evidence
+
     evidence = Evidence(
         evidence_id=str(uuid.uuid4()),
         anomaly_id=anomaly_id,
@@ -282,16 +289,16 @@ def store_diagnosis_and_recommendation(
         vegetation_ndvi_change=evidence_data.get("vegetation_ndvi_change")
     )
     db.add(evidence)
-    
-    # Create and store Recommendation
+
+    description = action_summary or f"Recommended action: {action.replace('_', ' ').title()}"
+
     recommendation = Recommendation(
         recommendation_id=str(uuid.uuid4()),
         anomaly_id=anomaly_id,
         action=action,
         priority=priority,
         target_zone=evidence_data.get("zone", "Unknown"),
-        description=f"Recommended action: {action.replace('_', ' ').title()}"
+        description=description
     )
     db.add(recommendation)
-    
     db.commit()

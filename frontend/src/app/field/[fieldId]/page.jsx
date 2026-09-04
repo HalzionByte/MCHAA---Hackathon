@@ -1,17 +1,35 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Upload, Sprout, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Upload, AlertTriangle, Volume2, Pause, MapPin, RotateCcw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import AnalysisFlow from '../../../components/AnalysisFlow';
 import EvidenceCard from '../../../components/EvidenceCard';
 import DiagnosisCard from '../../../components/DiagnosisCard';
 import RecommendationCard from '../../../components/RecommendationCard';
 import HealthTimeline from '../../../components/HealthTimeline';
+import CropSelectorModal from '../../../components/CropSelectorModal';
+import AudioAlertPlayer from '../../../components/AudioAlertPlayer';
 import { getField, getAnomaly } from '../../../api/api';
+import { useLanguage } from '../../../context/LanguageContext';
 
 const FieldMap = dynamic(() => import('../../../components/FieldMap'), { ssr: false });
+
+const cropEmojis = {
+  wheat: '🌾',
+  rice: '🍚',
+  cotton: '🌿',
+  sugarcane: '🎋',
+};
+
+const cropNameKeys = {
+  wheat: 'crop.wheat',
+  rice: 'crop.rice',
+  cotton: 'crop.cotton',
+  sugarcane: 'crop.sugarcane',
+};
 
 function SidebarSkeleton() {
   return (
@@ -30,21 +48,22 @@ function SidebarSkeleton() {
 }
 
 function NoAnomalyPlaceholder({ onOpenAnalysis }) {
+  const { t } = useLanguage();
   return (
     <div className="glass-card p-8 text-center space-y-4">
       <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[var(--emerald)]/10 mx-auto">
         <AlertTriangle className="w-7 h-7 text-[var(--emerald)]" />
       </div>
-      <h3 className="text-base font-semibold text-[var(--text-primary)]">No Active Anomalies</h3>
+      <h3 className="text-base font-semibold text-[var(--text-primary)]">{t('field.noAnomalies')}</h3>
       <p className="text-sm text-[var(--text-muted)] max-w-xs mx-auto">
-        This field is healthy. Upload an image to run a new analysis.
+        {t('field.noAnomaliesDesc')}
       </p>
       <button
         onClick={onOpenAnalysis}
         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--emerald)] text-[var(--bg-main)] text-sm font-semibold hover:opacity-90 transition-opacity"
       >
         <Upload className="w-4 h-4" />
-        Upload & Analyze
+        {t('field.uploadAnalyze')}
       </button>
     </div>
   );
@@ -53,24 +72,59 @@ function NoAnomalyPlaceholder({ onOpenAnalysis }) {
 export default function FieldPage() {
   const { fieldId } = useParams();
   const router = useRouter();
+  const { t, lang } = useLanguage();
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showCropSelector, setShowCropSelector] = useState(false);
   const [field, setField] = useState(null);
   const [anomaly, setAnomaly] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Drawn-area overlay state (ephemeral)
+  const [drawnFieldId, setDrawnFieldId] = useState(null);
+  const [drawnEvidence, setDrawnEvidence] = useState(null);
+  const [drawnFieldName, setDrawnFieldName] = useState(null);
+
+  // Voice play state (browser speechSynthesis)
+  const [voicePlaying, setVoicePlaying] = useState(false);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+
+  const fieldVoiceText = React.useMemo(() => {
+    if (!field || !anomaly) return '';
+    const problem = anomaly.diagnosis?.cause || 'Unknown problem detected';
+    const action = anomaly.recommendation?.description || anomaly.recommendation?.action?.replace(/_/g, ' ') || '';
+    const parts = [`Alert in ${field.name}. Problem: ${problem}.`];
+    if (action) parts.push(`Recommended action: ${action}.`);
+    return parts.join(' ');
+  }, [field, anomaly]);
+
+  // Race guard: track the latest load so stale responses can't overwrite current state
+  const loadIdRef = useRef(0);
+
   useEffect(() => {
+    // Reset state immediately so stale previous-field data never flashes
+    setField(null);
+    setAnomaly(null);
+    setLoading(true);
+    setDrawnFieldId(null);
+    setDrawnEvidence(null);
+    setDrawnFieldName(null);
+
+    const id = ++loadIdRef.current;
+
     async function load() {
       try {
         const fieldData = await getField(fieldId);
+        // Ignore if a newer load has started (stale fieldId)
+        if (id !== loadIdRef.current) return;
         setField(fieldData);
         if (fieldData?.anomalies?.length) {
           const anomalyData = await getAnomaly(fieldData.anomalies[0].anomaly_id);
-          setAnomaly(anomalyData);
+          if (id === loadIdRef.current) setAnomaly(anomalyData);
         }
       } catch (err) {
         console.error('Failed to load field data:', err);
       } finally {
-        setLoading(false);
+        if (id === loadIdRef.current) setLoading(false);
       }
     }
     load();
@@ -81,26 +135,75 @@ export default function FieldPage() {
     router.push(`/anomaly/${anomalyId}`);
   };
 
+  const handleCropChanged = async () => {
+    try {
+      const fieldData = await getField(fieldId);
+      setField(fieldData);
+      if (fieldData?.anomalies?.length) {
+        const anomalyData = await getAnomaly(fieldData.anomalies[0].anomaly_id);
+        setAnomaly(anomalyData);
+      }
+    } catch (err) {
+      console.error('Failed to reload field data:', err);
+    }
+  };
+
+  const handleAreaAnalyzed = useCallback((analysis) => {
+    setDrawnFieldId(analysis.field_id);
+    setDrawnEvidence(analysis.evidence);
+    setDrawnFieldName(analysis.name || 'Drawn Area');
+  }, []);
+
+  const handleResetArea = useCallback(() => {
+    setDrawnFieldId(null);
+    setDrawnEvidence(null);
+    setDrawnFieldName(null);
+  }, []);
+
+  const handleVoicePlay = () => {
+    if (!fieldVoiceText) return;
+    if (voicePlaying) {
+      window.speechSynthesis.cancel();
+      setVoicePlaying(false);
+      return;
+    }
+    const utter = new SpeechSynthesisUtterance(fieldVoiceText);
+    utter.lang = lang === 'ur' ? 'ur-PK' : 'en-US';
+    utter.onend = () => setVoicePlaying(false);
+    window.speechSynthesis.speak(utter);
+    setVoicePlaying(true);
+  };
+
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="max-w-7xl mx-auto p-6" style={{ paddingBottom: anomaly ? 120 : 24 }}>
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push('/')}
-            className="flex items-center justify-center w-9 h-9 rounded-lg border border-[var(--card-border)] bg-[var(--card-surface)] hover:bg-[var(--card-border)] transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            className="flex items-center justify-center w-10 h-10 rounded-lg border border-[var(--card-border)] bg-[var(--card-surface)] hover:bg-[var(--card-border)] transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className={`w-5 h-5 ${lang === 'ur' ? 'rotate-180' : ''}`} />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-[var(--text-primary)]">
-              {loading ? 'Loading...' : field?.name || 'Field Analysis'}
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+              {loading ? t('field.loading') : field?.name || t('field.analysis')}
             </h1>
             {!loading && field && (
-              <p className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
-                <Sprout className="w-3.5 h-3.5" />
-                {field.crop_type.charAt(0).toUpperCase() + field.crop_type.slice(1)} · {field.anomalies?.length === 1 ? '1 active anomaly' : `${field.anomalies?.length || 0} active anomalies`}
-              </p>
+              <button
+                onClick={() => setShowCropSelector(true)}
+                className="flex items-center gap-2 mt-1 text-base text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer group"
+              >
+                <span className="text-xl">{cropEmojis[field.crop_type] || '🌱'}</span>
+                <span className="capitalize">{cropNameKeys[field.crop_type] ? t(cropNameKeys[field.crop_type]) : field.crop_type}</span>
+                <span className="text-sm text-[var(--cyan)] opacity-0 group-hover:opacity-100 transition-opacity">
+                  {t('field.tapToChange')}
+                </span>
+                <span className="text-[var(--card-border)]">·</span>
+                <span>
+                  {field.anomalies?.length === 1 ? t('field.anomalyOne') : t('field.anomalyCount', { count: field.anomalies?.length || 0 })}
+                </span>
+              </button>
             )}
           </div>
         </div>
@@ -109,22 +212,47 @@ export default function FieldPage() {
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--emerald)] text-[var(--bg-main)] font-semibold text-sm hover:opacity-90 transition-opacity"
         >
           <Upload className="w-4 h-4" />
-          Upload & Analyze
+          {t('field.uploadAnalyze')}
         </button>
       </div>
+
+      {/* Drawn-area override indicator */}
+      {drawnFieldId && (
+        <div className="flex items-center gap-3 mb-4 p-2.5 rounded-lg bg-[var(--cyan)]/10 border border-[var(--cyan)]/30">
+          <MapPin className="w-4 h-4 text-[var(--cyan)] shrink-0" />
+          <span className="text-sm text-[var(--text-primary)]">
+            Showing data for <span className="font-medium">{drawnFieldName}</span>
+          </span>
+          <button
+            onClick={handleResetArea}
+            className="ml-auto flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Reset
+          </button>
+        </div>
+      )}
 
       {/* 2-Column Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left Column: Map + Timeline (3/5) */}
         <div className="lg:col-span-3 space-y-6">
-          <FieldMap fieldId={fieldId} />
-          <HealthTimeline fieldId={fieldId} />
+          <FieldMap
+            fieldId={fieldId}
+            onAreaAnalyzed={handleAreaAnalyzed}
+            resetKey={drawnFieldId ? `drawn-${drawnFieldId}` : null}
+          />
+          <HealthTimeline fieldId={drawnFieldId || fieldId} />
         </div>
 
         {/* Right Column: Evidence + Diagnosis + Recommendation (2/5) */}
         <div className="lg:col-span-2">
           {loading ? (
             <SidebarSkeleton />
+          ) : drawnFieldId ? (
+            <div className="space-y-6">
+              <EvidenceCard evidence={drawnEvidence} fieldId={drawnFieldId} />
+            </div>
           ) : anomaly ? (
             <div className="space-y-6">
               <EvidenceCard evidence={anomaly.evidence} fieldId={fieldId} />
@@ -137,6 +265,68 @@ export default function FieldPage() {
         </div>
       </div>
 
+      {/* Floating Voice Play Button */}
+      {anomaly && (
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', damping: 15, stiffness: 200 }}
+          onClick={handleVoicePlay}
+          disabled={voiceLoading}
+          className="fixed bottom-24 end-6 z-30 flex items-center justify-center w-16 h-16 rounded-full shadow-lg transition-all"
+          style={{
+            background: voicePlaying ? 'var(--crimson)' : 'var(--cyan)',
+            color: 'var(--bg-main)',
+            boxShadow: voicePlaying
+              ? '0 4px 20px rgba(239,68,68,0.4)'
+              : '0 4px 20px rgba(6,182,212,0.4)',
+          }}
+          aria-label={voicePlaying ? t('audio.pauseAlert') : t('audio.playAlert')}
+        >
+          {voiceLoading ? (
+            <div className="animate-spin w-6 h-6 border-2 border-current border-t-transparent rounded-full" />
+          ) : voicePlaying ? (
+            <div className="flex items-center gap-1">
+              <Pause className="w-6 h-6" />
+            </div>
+          ) : (
+            <Volume2 className="w-6 h-6" />
+          )}
+        </motion.button>
+      )}
+
+      {/* Floating Voice Equalizer */}
+      <AnimatePresence>
+        {voicePlaying && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed bottom-28 end-24 z-30 flex items-end gap-0.5"
+            style={{ height: 32 }}
+          >
+            {[1, 2, 3, 4].map((i) => (
+              <motion.div
+                key={i}
+                className="w-1 rounded-full"
+                style={{ background: 'var(--cyan)' }}
+                animate={{ height: [4, 20, 4] }}
+                transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.1 }}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Crop Selector Modal */}
+      <CropSelectorModal
+        isOpen={showCropSelector}
+        onClose={() => setShowCropSelector(false)}
+        fieldId={fieldId}
+        currentCropType={field?.crop_type}
+        onCropChanged={handleCropChanged}
+      />
+
       {/* Analysis Modal */}
       {showAnalysis && (
         <AnalysisFlow
@@ -145,6 +335,9 @@ export default function FieldPage() {
           onClose={() => setShowAnalysis(false)}
         />
       )}
+
+      {/* Audio Alert Player */}
+      {anomaly && <AudioAlertPlayer text={fieldVoiceText} />}
     </div>
   );
 }

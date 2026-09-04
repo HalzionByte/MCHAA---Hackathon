@@ -7,24 +7,10 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAllTelemetryHistory } from '../api/api';
+import { useLanguage } from '../context/LanguageContext';
 import { Calendar, TrendingUp, Minus, AlertTriangle, Droplet, Thermometer, Wind } from 'lucide-react';
 
-const metricConfig = {
-  ndvi: { label: 'NDVI', color: 'var(--emerald)', unit: '', icon: TrendingUp, yKey: 'ndvi' },
-  soil_moisture: { label: 'Soil Moisture', color: 'var(--cyan)', unit: '%', icon: Droplet, yKey: 'soil_moisture' },
-  temperature: { label: 'Temperature', color: 'var(--amber)', unit: '°C', icon: Thermometer, yKey: 'temperature' },
-  rainfall: { label: 'Rainfall', color: 'var(--emerald)', unit: 'mm', icon: Droplet, yKey: 'rainfall' },
-  humidity: { label: 'Humidity', color: 'var(--cyan)', unit: '%', icon: Wind, yKey: 'humidity' },
-};
-
 const metricOrder = ['ndvi', 'soil_moisture', 'temperature', 'rainfall', 'humidity'];
-
-const statusConfig = {
-  healthy: { label: 'Healthy', color: 'var(--emerald)', icon: TrendingUp, bg: 'rgba(16,185,129,0.15)' },
-  moderate: { label: 'Moderate', color: 'var(--amber)', icon: Minus, bg: 'rgba(245,158,11,0.15)' },
-  stressed: { label: 'Stressed', color: 'var(--crimson)', icon: AlertTriangle, bg: 'rgba(239,68,68,0.15)' },
-  unknown: { label: 'No Data', color: 'var(--text-muted)', icon: Minus, bg: 'transparent' },
-};
 
 function getStatus(ndvi) {
   if (ndvi === null || ndvi === undefined) return 'unknown';
@@ -33,14 +19,14 @@ function getStatus(ndvi) {
   return 'stressed';
 }
 
-function formatDate(dateStr) {
+function formatDate(dateStr, lang = 'en') {
   const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-US', { month: 'short', day: 'numeric' });
 }
 
-function CustomTooltip({ active, payload, label, history }) {
+function CustomTooltip({ active, payload, label, formattedHistory, statusConfig }) {
   if (!active || !payload?.length) return null;
-  const entry = history?.find(d => formatDate(d.date) === label);
+  const entry = formattedHistory?.find(d => d.formattedDate === label);
   const status = entry ? statusConfig[entry.status] || statusConfig.unknown : null;
   const StatusIcon = status?.icon;
   return (
@@ -68,9 +54,30 @@ function CustomTooltip({ active, payload, label, history }) {
 }
 
 export default function HealthTimeline({ fieldId }) {
+  const { t, lang } = useLanguage();
   const [selectedMetrics, setSelectedMetrics] = useState(['ndvi', 'soil_moisture']);
   const [history, setHistory] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const metricConfig = {
+    ndvi: { label: t('timeline.ndvi'), color: 'var(--emerald)', unit: '', icon: TrendingUp, yKey: 'ndvi' },
+    soil_moisture: { label: t('timeline.soilMoisture'), color: 'var(--cyan)', unit: '%', icon: Droplet, yKey: 'soil_moisture' },
+    temperature: { label: t('timeline.temperature'), color: 'var(--amber)', unit: '°C', icon: Thermometer, yKey: 'temperature' },
+    rainfall: { label: t('timeline.rainfall'), color: 'var(--emerald)', unit: 'mm', icon: Droplet, yKey: 'rainfall' },
+    humidity: { label: t('timeline.humidity'), color: 'var(--cyan)', unit: '%', icon: Wind, yKey: 'humidity' },
+  };
+
+  const statusConfig = {
+    healthy: { label: t('timeline.healthy'), color: 'var(--emerald)', icon: TrendingUp, bg: 'rgba(16,185,129,0.15)' },
+    moderate: { label: t('timeline.moderate'), color: 'var(--amber)', icon: Minus, bg: 'rgba(245,158,11,0.15)' },
+    stressed: { label: t('timeline.stressed'), color: 'var(--crimson)', icon: AlertTriangle, bg: 'rgba(239,68,68,0.15)' },
+    unknown: { label: t('timeline.noDataLabel'), color: 'var(--text-muted)', icon: Minus, bg: 'transparent' },
+  };
+
+  const formattedHistory = history?.map(d => ({
+    ...d,
+    formattedDate: formatDate(d.date, lang),
+  }));
 
   useEffect(() => {
     async function loadHistory() {
@@ -101,13 +108,13 @@ export default function HealthTimeline({ fieldId }) {
     return (
       <div className="glass p-8 text-center text-muted">
         <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-3" />
-        <p>Loading health history...</p>
+        <p>{t('timeline.loading')}</p>
       </div>
     );
   }
 
   if (!history?.length) {
-    return <div className="glass p-8 text-center text-muted">No historical data available</div>;
+    return <div className="glass p-8 text-center text-muted">{t('timeline.noData')}</div>;
   }
 
   return (
@@ -115,7 +122,7 @@ export default function HealthTimeline({ fieldId }) {
       <div className="flex items-center justify-between">
         <h3 className="card-title flex items-center gap-2">
           <Calendar className="w-5 h-5" />
-          Health Timeline (Last 45 Days)
+          {t('timeline.title')}
         </h3>
         <div className="flex items-center gap-1.5 flex-wrap">
           {metricOrder.map(m => {
@@ -152,8 +159,8 @@ export default function HealthTimeline({ fieldId }) {
       <AnimatePresence>
         {selectedMetrics.map((metricKey) => {
           const config = metricConfig[metricKey];
-          const data = history.map(d => ({
-            date: formatDate(d.date),
+          const data = formattedHistory.map(d => ({
+            date: d.formattedDate,
             value: d[metricKey],
             fullDate: d.date
           })).filter(d => d.value !== null);
@@ -175,7 +182,7 @@ export default function HealthTimeline({ fieldId }) {
                   <span className="font-medium">{config.label} {config.unit && `(${config.unit})`}</span>
                 </div>
                 <span className="text-xs text-muted">
-                  Range: {Math.min(...data.map(d => d.value)).toFixed(2)} – {Math.max(...data.map(d => d.value)).toFixed(2)} {config.unit}
+                  {t('timeline.range', { min: Math.min(...data.map(d => d.value)).toFixed(2), max: Math.max(...data.map(d => d.value)).toFixed(2), unit: config.unit })}
                 </span>
               </div>
               <div className="h-48">
@@ -202,7 +209,7 @@ export default function HealthTimeline({ fieldId }) {
                       tickFormatter={v => v.toFixed(metricKey === 'ndvi' ? 2 : 0)}
                     />
                     <Tooltip
-                      content={<CustomTooltip history={history} />}
+                      content={<CustomTooltip formattedHistory={formattedHistory} statusConfig={statusConfig} />}
                     />
                     <Area
                       type="monotone"
@@ -214,7 +221,7 @@ export default function HealthTimeline({ fieldId }) {
                       fill={`url(#gradient-${metricKey})`}
                       connectNulls
                     />
-                    <ReferenceLine y={data.reduce((sum, d) => sum + d.value, 0) / data.length} stroke="var(--text-muted)" strokeDasharray="4 4" label={{ position: 'right', fill: 'var(--text-muted)', formatter: v => `Avg: ${v.toFixed(2)}` }} />
+                    <ReferenceLine y={data.reduce((sum, d) => sum + d.value, 0) / data.length} stroke="var(--text-muted)" strokeDasharray="4 4" label={{ position: 'right', fill: 'var(--text-muted)', formatter: v => t('timeline.avg', { value: v.toFixed(2) }) }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -225,7 +232,7 @@ export default function HealthTimeline({ fieldId }) {
 
       {selectedMetrics.length === 0 && (
         <div className="text-center py-12 text-muted">
-          Select at least one metric to display charts
+          {t('timeline.selectMetrics')}
         </div>
       )}
     </div>

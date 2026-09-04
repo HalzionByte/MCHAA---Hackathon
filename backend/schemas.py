@@ -100,8 +100,11 @@ class AnalyzeRequestSchema(BaseModel):
         if not v or not v.strip():
             raise ValueError("image_url cannot be empty")
         val = v.strip()
+        if val.startswith("data:image/"):
+            # Allow base64 data URLs (data:image/jpeg;base64,...)
+            return val
         if not (val.startswith('http://') or val.startswith('https://')):
-            raise ValueError("image_url must start with http:// or https://")
+            raise ValueError("image_url must start with http://, https://, or data:image/")
         return val
 
     @field_validator('field_id')
@@ -203,5 +206,43 @@ class TelemetryDataPointSchema(BaseModel):
     temperature: float
     rainfall: float
     humidity: float
+
+# ===== Create Field from Drawn Polygon =====
+class CreateFieldRequestSchema(BaseModel):
+    name: str
+    crop_type: str
+    polygon: List[List[float]]  # [[lat, lng], ...] closed ring
+    farm_id: str = "farm-001"   # default farm
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Field name cannot be empty")
+        return v.strip()
+
+    @field_validator('crop_type')
+    @classmethod
+    def validate_crop_type(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("crop_type cannot be empty")
+        return v.strip().lower()
+
+    @field_validator('polygon')
+    @classmethod
+    def validate_polygon(cls, v: List[List[float]]) -> List[List[float]]:
+        if not v or len(v) < 4:
+            raise ValueError("Polygon must have at least 4 points (3 unique + closing point)")
+        return v
+
+# ===== Analyze Area Response =====
+class AnalyzeAreaResponseSchema(BaseModel):
+    field_id: str
+    name: str
+    boundary: dict
+    polygon: List[List[float]]
+    evidence: Optional[EvidenceSchema] = None
+    telemetry: List[TelemetryDataPointSchema] = []
+    anomaly_summary: Optional[dict] = None
 
 
