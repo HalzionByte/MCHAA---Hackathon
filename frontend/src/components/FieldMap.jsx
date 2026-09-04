@@ -1,23 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup, Polygon } from 'react-leaflet';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
 import { getField } from '../api/api';
-import { getSeverityClass, getSeverityColor } from '../lib/severity';
-import AnomalyHeatmap from './AnomalyHeatmap';
-import { Flame, Map, Sprout, AlertTriangle } from 'lucide-react';
+import LocationSearch from './LocationSearch';
+import MapRecenter from './MapRecenter';
+import DrawControl from './DrawControl';
+import CreateFieldModal from './CreateFieldModal';
+import { Sprout, AlertTriangle, Pencil, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-
-const ZONE_COORDS = {
-  'B3': { lat: 31.5204, lng: 74.3587 },
-  'A1': { lat: 31.5210, lng: 74.3580 },
-  'A2': { lat: 31.5208, lng: 74.3595 },
-  'B1': { lat: 31.5200, lng: 74.3582 },
-  'B2': { lat: 31.5202, lng: 74.3590 },
-  'C1': { lat: 31.5198, lng: 74.3598 },
-  'C2': { lat: 31.5195, lng: 74.3592 },
-  'C3': { lat: 31.5192, lng: 74.3585 },
-};
 
 const cropNameKeys = {
   wheat: 'crop.wheat',
@@ -26,74 +18,33 @@ const cropNameKeys = {
   sugarcane: 'crop.sugarcane',
 };
 
-function AnomalyMarkers({ anomalies, t }) {
-  return anomalies?.map((anomaly) => {
-    const coords = anomaly.detected_region?.coordinates || ZONE_COORDS[anomaly.zone];
-    if (!coords) return null;
-    const severityColor = getSeverityColor(anomaly.severity);
-      return (
-        <CircleMarker
-          key={anomaly.anomaly_id}
-          center={[coords.lat, coords.lng]}
-          radius={8}
-          pathOptions={{
-            fillColor: severityColor,
-            fillOpacity: 1,
-            color: 'var(--bg-main)',
-            weight: 3,
-          }}
-        >
-          <Popup>
-            <div className="glass p-4 min-w-[200px]">
-              <h4 className="font-medium mb-2">{t('map.zone', { zone: anomaly.detected_region?.zone || anomaly.zone })}</h4>
-              <p className="text-sm">
-                {t('map.type', { type: anomaly.anomaly_type.replace('_', ' ') })}<br/>
-                {t('map.severityLabel', { severity: (
-                  <span className={getSeverityClass(anomaly.severity)}>
-                    {((anomaly.severity * 100).toFixed(0))}%
-                  </span>
-                ) })}
-              </p>
-            </div>
-          </Popup>
-        </CircleMarker>
-    );
-  });
-}
-
 function MapLegend() {
   const { t } = useLanguage();
-  const severities = [
-    { label: t('map.critical'), color: 'var(--crimson)', threshold: '> 70%' },
-    { label: t('map.moderate'), color: 'var(--amber)', threshold: '30-70%' },
-    { label: t('map.low'), color: 'var(--emerald)', threshold: '< 30%' }
-  ];
   return (
-    <div className="absolute bottom-4 end-4 field-overlay z-10 min-w-[180px]">
-      <h4 className="font-medium mb-2 text-[var(--text-primary)]">{t('map.severity')}</h4>
-      <div className="space-y-2">
-        {severities.map((s) => (
-          <div key={s.label} className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ background: s.color }} />
-            <span className="text-xs text-[var(--text-muted)]">{s.label} ({s.threshold})</span>
-          </div>
-        ))}
-        <div className="border-t border-[var(--card-border)] pt-2 mt-2">
-          <div className="flex items-center gap-2 text-xs">
-            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500" />
-            <span className="text-[var(--text-muted)]">{t('map.heatmapIntensity')}</span>
-          </div>
-        </div>
+    <div className="absolute bottom-4 end-4 field-overlay z-10 min-w-[160px]">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-3 h-3 rounded-sm" style={{ background: 'var(--cyan)', opacity: 0.8 }} />
+        <span className="text-xs text-[var(--text-muted)]">Analyzed area</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="w-3 h-3 rounded-sm" style={{ border: '1.5px dashed var(--emerald)', background: 'transparent' }} />
+        <span className="text-xs text-[var(--text-muted)]">Field boundary</span>
       </div>
     </div>
   );
 }
 
-export default function FieldMap({ fieldId }) {
+export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
   const { t } = useLanguage();
+  const router = useRouter();
   const [field, setField] = useState(null);
-  const [showHeatmap, setShowHeatmap] = useState(true);
-  const [showMarkers, setShowMarkers] = useState(true);
+
+  const [searchTarget, setSearchTarget] = useState(null);
+  const [drawingEnabled, setDrawingEnabled] = useState(false);
+  const [drawnCoords, setDrawnCoords] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [polygonError, setPolygonError] = useState(null);
 
   useEffect(() => {
     async function loadField() {
@@ -117,6 +68,53 @@ export default function FieldMap({ fieldId }) {
     return () => document.head.removeChild(style);
   }, []);
 
+  const handleSearchSelect = useCallback((result) => {
+    setSearchTarget([result.lat, result.lng]);
+  }, []);
+
+  const handleDrawCreated = useCallback((coords) => {
+    if (!coords || coords.length < 4) {
+      setPolygonError('Please draw at least 4 points to form a valid area.');
+      setTimeout(() => setPolygonError(null), 3500);
+      return;
+    }
+    setPolygonError(null);
+    setDrawnCoords(coords);
+    setShowCreateModal(true);
+    setDrawingEnabled(false);
+  }, []);
+
+  const handleFieldCreated = useCallback((newFieldId, analysis) => {
+    setAnalysisResult(analysis);
+    setDrawingEnabled(false);
+    // Keep drawnCoords so the drawn polygon stays highlighted
+    getField(newFieldId).then(setField).catch(console.error);
+    if (onAreaAnalyzed) onAreaAnalyzed(analysis);
+    // Redirect to the new field's page after a brief delay
+    setTimeout(() => {
+      router.push(`/field/${newFieldId}`);
+    }, 1200);
+  }, [onAreaAnalyzed, router]);
+
+  const handleCreateModalClose = useCallback(() => {
+    setShowCreateModal(false);
+    setDrawnCoords(null);
+  }, []);
+
+  const handleDrawCancel = useCallback(() => {
+    setDrawingEnabled(false);
+    setDrawnCoords(null);
+    setShowCreateModal(false);
+  }, []);
+
+  // Reset drawn state when parent signals reset (resetKey changes)
+  useEffect(() => {
+    if (resetKey === null) {
+      setDrawnCoords(null);
+      setAnalysisResult(null);
+    }
+  }, [resetKey]);
+
   if (!field) {
     return (
       <div className="glass-card p-8 text-center text-[var(--text-muted)]">
@@ -128,7 +126,8 @@ export default function FieldMap({ fieldId }) {
 
   const center = field.boundary ? [field.boundary.lat, field.boundary.lng] : [31.5204, 74.3587];
 
-  const generateFieldPolygon = (center, radiusKm = 1.5) => {
+  const fieldPolygon = field.polygon || (field.boundary ? (() => {
+    const radiusKm = 1.5;
     const points = [];
     const numPoints = 32;
     const radiusDeg = radiusKm / 111;
@@ -140,21 +139,42 @@ export default function FieldMap({ fieldId }) {
       ]);
     }
     return points;
-  };
-
-  const fieldPolygon = field.boundary ? generateFieldPolygon(center) : null;
+  })() : null);
 
   return (
     <div className="glass-card p-5">
+      <div className="mb-3">
+        <LocationSearch onSelect={handleSearchSelect} />
+      </div>
+
       <div className="relative h-96 w-full rounded-lg overflow-hidden">
-        {/* Map */}
-        <MapContainer center={center} zoom={14} maxZoom={20} scrollWheelZoom={true} className="h-full w-full rounded-lg">
+        <MapContainer center={center} zoom={14} maxZoom={20} scrollWheelZoom={!drawingEnabled} className="h-full w-full rounded-lg">
           <TileLayer
             attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             maxZoom={19}
           />
-          {fieldPolygon && (
+
+          {searchTarget && <MapRecenter center={searchTarget} zoom={14} />}
+
+          <DrawControl
+            drawingEnabled={drawingEnabled}
+            onDrawCreated={handleDrawCreated}
+          />
+
+          {/* Highlighted drawn area (analyzed) — only this polygon shows */}
+          {drawnCoords && !drawingEnabled && (
+            <Polygon
+              positions={drawnCoords}
+              color="var(--cyan)"
+              fillColor="var(--cyan)"
+              fillOpacity={0.18}
+              weight={3}
+            />
+          )}
+
+          {/* Field polygon — only shown when NO drawn area is active */}
+          {fieldPolygon && !drawnCoords && !drawingEnabled && (
             <Polygon
               positions={fieldPolygon}
               color="var(--emerald)"
@@ -164,26 +184,19 @@ export default function FieldMap({ fieldId }) {
               dashArray="5, 5"
             />
           )}
-          {showHeatmap && <AnomalyHeatmap anomalies={field.anomalies} />}
-          {showMarkers && <AnomalyMarkers anomalies={field.anomalies} t={t} />}
+
           <MapLegend />
         </MapContainer>
 
-        {/* Floating Toggle Chips (top-right) */}
+        {/* Top-right: Draw button only */}
         <div className="absolute top-3 end-3 z-[1000] flex items-center gap-2">
           <button
-            onClick={() => setShowHeatmap(!showHeatmap)}
-            className={`map-chip ${showHeatmap ? 'map-chip-active' : ''}`}
+            onClick={() => drawingEnabled ? handleDrawCancel() : setDrawingEnabled(true)}
+            className={`map-chip ${drawingEnabled ? 'map-chip-active' : ''}`}
+            title={drawingEnabled ? 'Cancel drawing' : 'Draw field boundary'}
           >
-            <Flame className="w-3.5 h-3.5" />
-            {t('map.heatmap')}
-          </button>
-          <button
-            onClick={() => setShowMarkers(!showMarkers)}
-            className={`map-chip ${showMarkers ? 'map-chip-active' : ''}`}
-          >
-            <Map className="w-3.5 h-3.5" />
-            {t('map.markers')}
+            {drawingEnabled ? <X className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
+            {drawingEnabled ? 'Cancel' : 'Draw'}
           </button>
         </div>
 
@@ -191,18 +204,67 @@ export default function FieldMap({ fieldId }) {
         <div className="absolute bottom-4 start-4 z-[1000] field-overlay">
           <div className="flex items-center gap-2">
             <Sprout className="w-4 h-4 text-[var(--emerald)]" />
-            <span className="font-medium text-[var(--text-primary)]">{field.name}</span>
+            <span className="font-medium text-[var(--text-primary)]">
+              {drawnCoords && analysisResult ? analysisResult.name || 'Drawn Area' : field.name}
+            </span>
             <span className="text-[var(--text-muted)]">·</span>
-            <span className="text-[var(--text-muted)]">{cropNameKeys[field.crop_type] ? t(cropNameKeys[field.crop_type]) : field.crop_type}</span>
+            <span className="text-[var(--text-muted)]">
+              {cropNameKeys[field.crop_type] ? t(cropNameKeys[field.crop_type]) : field.crop_type}
+            </span>
           </div>
-          {field.anomalies?.length > 0 && (
+          {drawnCoords && analysisResult?.evidence && (
+            <div className="flex items-center gap-3 mt-1 text-xs text-[var(--text-muted)]">
+              <span>Soil: {analysisResult.evidence.soil_moisture_percent ?? 'N/A'}%</span>
+              <span>·</span>
+              <span>NDVI Δ: {analysisResult.evidence.vegetation_ndvi_change ?? 'N/A'}</span>
+            </div>
+          )}
+          {!drawnCoords && field.anomalies?.length > 0 && (
             <div className="flex items-center gap-1 mt-1 text-xs text-[var(--crimson)]">
               <AlertTriangle className="w-3 h-3" />
               {t('map.anomalyDetected', { count: field.anomalies.length })}
             </div>
           )}
         </div>
+
+        {/* Draw mode indicator */}
+        {drawingEnabled && (
+          <div className="absolute top-3 start-1/2 -translate-x-1/2 z-[1000] glass px-3 py-1.5 text-xs text-[var(--cyan)] font-medium flex items-center gap-2">
+            <Pencil className="w-3 h-3" />
+            Click to place points · Click first point to finish
+          </div>
+        )}
+
+        {/* Polygon error toast */}
+        {polygonError && (
+          <div className="absolute top-3 start-1/2 -translate-x-1/2 z-[1000] glass px-3 py-1.5 text-xs text-[var(--crimson)] font-medium">
+            {polygonError}
+          </div>
+        )}
       </div>
+
+      {/* Analysis result banner */}
+      {analysisResult && analysisResult.anomaly_summary && (
+        <div className={`mt-3 p-3 rounded-lg text-sm ${
+          analysisResult.anomaly_summary.anomaly_type === 'healthy'
+            ? 'bg-[var(--emerald)]/10 text-[var(--emerald)]'
+            : 'bg-[var(--crimson)]/10 text-[var(--crimson)]'
+        }`}>
+          <span className="font-medium">{analysisResult.name || 'Drawn Area'}</span> —{' '}
+          {analysisResult.anomaly_summary.anomaly_type === 'healthy'
+            ? 'Area appears healthy'
+            : `${analysisResult.anomaly_summary.anomaly_type.replace('_', ' ')} detected (${(analysisResult.anomaly_summary.severity * 100).toFixed(0)}%)`}
+          {' · '}Soil: {analysisResult.evidence?.soil_moisture_percent ?? 'N/A'}%
+          {' · '}NDVI change: {analysisResult.evidence?.vegetation_ndvi_change ?? 'N/A'}
+        </div>
+      )}
+
+      <CreateFieldModal
+        isOpen={showCreateModal}
+        onClose={handleCreateModalClose}
+        polygonCoords={drawnCoords}
+        onComplete={handleFieldCreated}
+      />
     </div>
   );
 }

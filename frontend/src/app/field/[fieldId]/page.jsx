@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Upload, AlertTriangle, Volume2, Pause } from 'lucide-react';
+import { ArrowLeft, Upload, AlertTriangle, Volume2, Pause, MapPin, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AnalysisFlow from '../../../components/AnalysisFlow';
 import EvidenceCard from '../../../components/EvidenceCard';
@@ -12,7 +12,7 @@ import RecommendationCard from '../../../components/RecommendationCard';
 import HealthTimeline from '../../../components/HealthTimeline';
 import CropSelectorModal from '../../../components/CropSelectorModal';
 import AudioAlertPlayer from '../../../components/AudioAlertPlayer';
-import { getField, getAnomaly, getAnomalyVoice } from '../../../api/api';
+import { getField, getAnomaly } from '../../../api/api';
 import { useLanguage } from '../../../context/LanguageContext';
 
 const FieldMap = dynamic(() => import('../../../components/FieldMap'), { ssr: false });
@@ -72,7 +72,6 @@ function NoAnomalyPlaceholder({ onOpenAnalysis }) {
 export default function FieldPage() {
   const { fieldId } = useParams();
   const router = useRouter();
-  const audioRef = useRef(null);
   const { t, lang } = useLanguage();
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showCropSelector, setShowCropSelector] = useState(false);
@@ -80,24 +79,52 @@ export default function FieldPage() {
   const [anomaly, setAnomaly] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Voice play state
+  // Drawn-area overlay state (ephemeral)
+  const [drawnFieldId, setDrawnFieldId] = useState(null);
+  const [drawnEvidence, setDrawnEvidence] = useState(null);
+  const [drawnFieldName, setDrawnFieldName] = useState(null);
+
+  // Voice play state (browser speechSynthesis)
   const [voicePlaying, setVoicePlaying] = useState(false);
-  const [voiceUrl, setVoiceUrl] = useState(null);
   const [voiceLoading, setVoiceLoading] = useState(false);
 
+  const fieldVoiceText = React.useMemo(() => {
+    if (!field || !anomaly) return '';
+    const problem = anomaly.diagnosis?.cause || 'Unknown problem detected';
+    const action = anomaly.recommendation?.description || anomaly.recommendation?.action?.replace(/_/g, ' ') || '';
+    const parts = [`Alert in ${field.name}. Problem: ${problem}.`];
+    if (action) parts.push(`Recommended action: ${action}.`);
+    return parts.join(' ');
+  }, [field, anomaly]);
+
+  // Race guard: track the latest load so stale responses can't overwrite current state
+  const loadIdRef = useRef(0);
+
   useEffect(() => {
+    // Reset state immediately so stale previous-field data never flashes
+    setField(null);
+    setAnomaly(null);
+    setLoading(true);
+    setDrawnFieldId(null);
+    setDrawnEvidence(null);
+    setDrawnFieldName(null);
+
+    const id = ++loadIdRef.current;
+
     async function load() {
       try {
         const fieldData = await getField(fieldId);
+        // Ignore if a newer load has started (stale fieldId)
+        if (id !== loadIdRef.current) return;
         setField(fieldData);
         if (fieldData?.anomalies?.length) {
           const anomalyData = await getAnomaly(fieldData.anomalies[0].anomaly_id);
-          setAnomaly(anomalyData);
+          if (id === loadIdRef.current) setAnomaly(anomalyData);
         }
       } catch (err) {
         console.error('Failed to load field data:', err);
       } finally {
-        setLoading(false);
+        if (id === loadIdRef.current) setLoading(false);
       }
     }
     load();
@@ -121,35 +148,30 @@ export default function FieldPage() {
     }
   };
 
-  const handleVoicePlay = async () => {
-    if (!anomaly) return;
-    if (voicePlaying && audioRef.current) {
-      audioRef.current.pause();
+  const handleAreaAnalyzed = useCallback((analysis) => {
+    setDrawnFieldId(analysis.field_id);
+    setDrawnEvidence(analysis.evidence);
+    setDrawnFieldName(analysis.name || 'Drawn Area');
+  }, []);
+
+  const handleResetArea = useCallback(() => {
+    setDrawnFieldId(null);
+    setDrawnEvidence(null);
+    setDrawnFieldName(null);
+  }, []);
+
+  const handleVoicePlay = () => {
+    if (!fieldVoiceText) return;
+    if (voicePlaying) {
+      window.speechSynthesis.cancel();
       setVoicePlaying(false);
       return;
     }
-    if (voiceUrl && audioRef.current) {
-      audioRef.current.play().catch(() => {});
-      setVoicePlaying(true);
-      return;
-    }
-    setVoiceLoading(true);
-    try {
-      const data = await getAnomalyVoice(anomaly.anomaly_id);
-      if (data?.audio_url) {
-        setVoiceUrl(data.audio_url);
-        setTimeout(() => {
-          if (audioRef.current) {
-            audioRef.current.play().catch(() => {});
-            setVoicePlaying(true);
-          }
-        }, 100);
-      }
-    } catch {
-      // Audio unavailable
-    } finally {
-      setVoiceLoading(false);
-    }
+    const utter = new SpeechSynthesisUtterance(fieldVoiceText);
+    utter.lang = lang === 'ur' ? 'ur-PK' : 'en-US';
+    utter.onend = () => setVoicePlaying(false);
+    window.speechSynthesis.speak(utter);
+    setVoicePlaying(true);
   };
 
   return (
@@ -194,18 +216,43 @@ export default function FieldPage() {
         </button>
       </div>
 
+      {/* Drawn-area override indicator */}
+      {drawnFieldId && (
+        <div className="flex items-center gap-3 mb-4 p-2.5 rounded-lg bg-[var(--cyan)]/10 border border-[var(--cyan)]/30">
+          <MapPin className="w-4 h-4 text-[var(--cyan)] shrink-0" />
+          <span className="text-sm text-[var(--text-primary)]">
+            Showing data for <span className="font-medium">{drawnFieldName}</span>
+          </span>
+          <button
+            onClick={handleResetArea}
+            className="ml-auto flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Reset
+          </button>
+        </div>
+      )}
+
       {/* 2-Column Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left Column: Map + Timeline (3/5) */}
         <div className="lg:col-span-3 space-y-6">
-          <FieldMap fieldId={fieldId} />
-          <HealthTimeline fieldId={fieldId} />
+          <FieldMap
+            fieldId={fieldId}
+            onAreaAnalyzed={handleAreaAnalyzed}
+            resetKey={drawnFieldId ? `drawn-${drawnFieldId}` : null}
+          />
+          <HealthTimeline fieldId={drawnFieldId || fieldId} />
         </div>
 
         {/* Right Column: Evidence + Diagnosis + Recommendation (2/5) */}
         <div className="lg:col-span-2">
           {loading ? (
             <SidebarSkeleton />
+          ) : drawnFieldId ? (
+            <div className="space-y-6">
+              <EvidenceCard evidence={drawnEvidence} fieldId={drawnFieldId} />
+            </div>
           ) : anomaly ? (
             <div className="space-y-6">
               <EvidenceCard evidence={anomaly.evidence} fieldId={fieldId} />
@@ -271,14 +318,6 @@ export default function FieldPage() {
         )}
       </AnimatePresence>
 
-      {/* Hidden Audio */}
-      <audio
-        ref={audioRef}
-        src={voiceUrl}
-        onEnded={() => setVoicePlaying(false)}
-        onPause={() => setVoicePlaying(false)}
-      />
-
       {/* Crop Selector Modal */}
       <CropSelectorModal
         isOpen={showCropSelector}
@@ -298,7 +337,7 @@ export default function FieldPage() {
       )}
 
       {/* Audio Alert Player */}
-      {anomaly && <AudioAlertPlayer anomalyId={anomaly.anomaly_id} />}
+      {anomaly && <AudioAlertPlayer text={fieldVoiceText} />}
     </div>
   );
 }

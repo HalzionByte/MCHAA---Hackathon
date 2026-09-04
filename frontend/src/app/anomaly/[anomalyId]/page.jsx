@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Sprout } from 'lucide-react';
+import { ArrowLeft, Sprout, Camera } from 'lucide-react';
 import { getAnomaly } from '../../../api/api';
 import FarmerActionHeader from '../../../components/FarmerActionHeader';
 import ImpactMetricsCard from '../../../components/ImpactMetricsCard';
@@ -42,6 +42,7 @@ export default function AnomalyPage() {
   const [anomaly, setAnomaly] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [voicePlaying, setVoicePlaying] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -57,6 +58,29 @@ export default function AnomalyPage() {
     }
     if (anomalyId) load();
   }, [anomalyId, t]);
+
+  const anomalyVoiceText = useMemo(() => {
+    if (!anomaly) return '';
+    const problem = anomaly.diagnosis?.cause || 'Unknown problem detected';
+    const action = anomaly.recommendation?.description || anomaly.recommendation?.action?.replace(/_/g, ' ') || '';
+    const parts = [`Alert in field. Problem: ${problem}.`];
+    if (action) parts.push(`Recommended action: ${action}.`);
+    return parts.join(' ');
+  }, [anomaly]);
+
+  const handleVoicePlay = useCallback(() => {
+    if (!anomalyVoiceText) return;
+    if (voicePlaying) {
+      window.speechSynthesis.cancel();
+      setVoicePlaying(false);
+      return;
+    }
+    const utter = new SpeechSynthesisUtterance(anomalyVoiceText);
+    utter.lang = lang === 'ur' ? 'ur-PK' : 'en-US';
+    utter.onend = () => setVoicePlaying(false);
+    window.speechSynthesis.speak(utter);
+    setVoicePlaying(true);
+  }, [anomalyVoiceText, voicePlaying, lang]);
 
   if (loading) {
     return (
@@ -90,7 +114,69 @@ export default function AnomalyPage() {
   const severityColor = getSeverityColor(severity);
   const severityLabel = getSeverityLabel(severity, lang);
   const severityBg = getSeverityBg(severity);
+  const isImage = anomaly.source === 'image';
 
+  const anomalyTypeLabel = (type) => {
+    const labels = {
+      water_stress: 'Water Stress',
+      insect_infestation: 'Insect Infestation',
+      pest_attack: 'Pest Attack',
+      disease: 'Disease',
+      nutrient_physical_harm: 'Nutrient / Physical Harm',
+      healthy: 'Healthy',
+    };
+    return labels[type] || (type || 'Unknown').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  };
+
+  // ────────────────────────────────────────────────────────
+  // IMAGE-SOURCED ANOMALY — simplified: Problem + Solution
+  // ────────────────────────────────────────────────────────
+  if (isImage) {
+    return (
+      <div className="max-w-3xl mx-auto p-6">
+        {/* Back button */}
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-6"
+        >
+          <ArrowLeft className={`w-4 h-4 ${lang === 'ur' ? 'rotate-180' : ''}`} />
+          {t('anomaly.back')}
+        </button>
+
+        {/* AI Analysis header */}
+        <div className="glass-card p-6 mb-6 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--cyan)]/20 mb-4">
+            <Camera className="w-8 h-8 text-[var(--cyan)]" />
+          </div>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
+            {anomalyTypeLabel(anomaly.anomaly_type)}
+          </h1>
+          <p className="text-sm text-[var(--text-muted)]">
+            AI image analysis confidence: {(anomaly.confidence * 100).toFixed(0)}%
+          </p>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <span className="badge" style={{ background: severityBg, color: severityColor }}>
+              Severity: {severityLabel}({(severity * 100).toFixed(0)}%)
+            </span>
+          </div>
+        </div>
+
+        {/* Problem */}
+        <div className="mb-6">
+          <DiagnosisCard diagnosis={anomaly.diagnosis} simplified />
+        </div>
+
+        {/* Solution */}
+        <div className="mb-6">
+          <RecommendationCard recommendation={anomaly.recommendation} createdAt={anomaly.created_at} simplified />
+        </div>
+      </div>
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // SATELLITE / DRAWN-AREA ANOMALY — full dashboard
+  // ────────────────────────────────────────────────────────────
   return (
     <div className="max-w-7xl mx-auto p-6" style={{ paddingBottom: 120 }}>
       {/* Page Header */}
@@ -108,7 +194,7 @@ export default function AnomalyPage() {
             </h1>
             <p className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
               <Sprout className="w-3.5 h-3.5" />
-              {t(`anomaly.type.${anomaly.anomaly_type}`) || anomaly.anomaly_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              {anomalyTypeLabel(anomaly.anomaly_type)}
               <span className="text-[var(--card-border)]">·</span>
               {t('anomaly.zone')} {anomaly.detected_region?.zone || '?'}
               <span className="text-[var(--card-border)]">·</span>
@@ -174,7 +260,14 @@ export default function AnomalyPage() {
       </div>
 
       {/* Audio Alert Player */}
-      <AudioAlertPlayer anomalyId={anomaly.anomaly_id} />
+      {anomalyVoiceText && (
+        <AudioAlertPlayer
+          text={anomalyVoiceText}
+          playing={voicePlaying}
+          onPlay={() => setVoicePlaying(true)}
+          onPause={() => setVoicePlaying(false)}
+        />
+      )}
     </div>
   );
 }
