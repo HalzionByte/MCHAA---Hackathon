@@ -41,7 +41,7 @@ export const MOCK_FIELD = {
   },
   anomalies: [
     {
-      anomaly_id: "anom-001",
+      anomaly_id: "52a1373e-c089-48ac-acba-12936877ac54",
       anomaly_type: "water_stress",
       severity: 0.85,
       confidence: 0.87,
@@ -58,7 +58,7 @@ export const MOCK_FIELD = {
 };
 
 export const MOCK_ANOMALY = {
-  anomaly_id: "anom-001",
+  anomaly_id: "52a1373e-c089-48ac-acba-12936877ac54",
   field_id: "field-001",
   anomaly_type: "water_stress",
   severity: 0.85,
@@ -100,7 +100,7 @@ export const MOCK_ANOMALY = {
     water_saved_liters: 3000,
     cost_saved_usd: 120
   },
-  voice_audio_url: "/api/anomalies/anom-001/voice",
+  voice_audio_url: "/api/anomalies/52a1373e-c089-48ac-acba-12936877ac54/voice",
   sms_text: "[CROP ALERT] Zone B3 RED. Water needed in 24h. Reason: 18% moisture. Crop loss saved: $450.",
   created_at: "2024-12-08T14:30:00Z"
 };

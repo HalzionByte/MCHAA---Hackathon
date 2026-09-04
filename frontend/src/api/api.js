@@ -212,4 +212,71 @@ function generateFallbackTelemetry(fieldId) {
   });
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// User-drawn polygon endpoints
+// ──────────────────────────────────────────────────────────────────────────────
+
+export async function createField({ name, crop_type, polygon, farm_id }) {
+  if (USE_MOCK_DATA) {
+    const mockId = `field-${crypto.randomUUID().slice(0, 8)}`;
+    return {
+      field_id: mockId,
+      farm_id: farm_id || 'farm-001',
+      name,
+      crop_type,
+      boundary: { lat: polygon?.[0]?.[0] || 31.52, lng: polygon?.[0]?.[1] || 74.35 },
+      polygon: polygon || [],
+      area_hectares: 5.0,
+      anomalies: [],
+    };
+  }
+  try {
+    const response = await api.post('/api/fields', {
+      name,
+      crop_type,
+      polygon,
+      farm_id: farm_id || 'farm-001',
+    });
+    return normalizeResponse(response.data);
+  } catch (error) {
+    console.error('Error creating field:', error);
+    throw error;
+  }
+}
+
+export async function analyzeArea(fieldId) {
+  if (USE_MOCK_DATA) {
+    return {
+      field_id: fieldId,
+      anomaly_id: MOCK_ANOMALY.anomaly_id,
+      name: 'Mock Field',
+      evidence: MOCK_ANOMALY.evidence,
+      anomaly_summary: {
+        anomaly_type: 'water_stress',
+        severity: 0.85,
+        confidence: 0.87,
+        zone: 'drawn_area',
+        crop_type: 'wheat',
+      },
+    };
+  }
+  try {
+    const response = await api.post(`/api/fields/${fieldId}/analyze-area`);
+    return normalizeResponse(response.data);
+  } catch (error) {
+    console.error('Error analyzing area:', error);
+    throw error;
+  }
+}
+
+export async function deleteField(fieldId) {
+  try {
+    const response = await api.delete(`/api/fields/${fieldId}`);
+    return normalizeResponse(response.data);
+  } catch (error) {
+    console.error('Error deleting field:', error);
+    throw error;
+  }
+}
+
 export default api;
