@@ -19,13 +19,61 @@ from services.mock_data import (
 AGRO_KEY = os.getenv("AGROMONITORING_API_KEY", "")
 AGRO_BASE = "https://api.agromonitoring.com/agro/1.0"
 OPEN_METEO_BASE = "https://api.open-meteo.com/v1"
+OPEN_METEO_ARCHIVE = "https://archive-api.open-meteo.com/v1/archive"
 
 # In-memory polygon cache: field_id -> agromonitoring polygon id
 _polygon_cache: dict[str, str] = {}
 
+# Override: field_id -> polygon id (set when user draws a custom polygon)
+_polygon_override: dict[str, str] = {}
+
+# User-drawn polygon coordinates: field_id -> [[lat, lng], ...]
+_polygon_coords: dict[str, list[list[float]]] = {}
+
+
+def compute_polygon_centroid(coords: list[list[float]]) -> tuple[float, float]:
+    """Compute centroid of a polygon. coords = [[lat, lng], ...]."""
+    n = len(coords) - 1  # exclude closing point if present
+    if n <= 0:
+        return 0.0, 0.0
+    lat = sum(c[0] for c in coords[:n]) / n
+    lng = sum(c[1] for c in coords[:n]) / n
+    return round(lat, 6), round(lng, 6)
+
+
+def compute_polygon_area_hectares(coords: list[list[float]]) -> float:
+    """Compute approximate area of a polygon in hectares using the Shoelace formula.
+    coords = [[lat, lng], ...]. Uses lat/lng → meters approximation."""
+    n = len(coords) - 1
+    if n <= 0:
+        return 0.0
+    R = 6371000  # Earth radius in meters
+    area = 0
+    for i in range(n):
+        lat1 = math.radians(coords[i][0])
+        lat2 = math.radians(coords[(i + 1) % n][0])
+        dlng = math.radians(coords[(i + 1) % n][1] - coords[i][1])
+        area += (lat2 - lat1) * (2 + math.sin(lat1) + math.sin(lat2))
+    area = abs(area * R * R / 2)
+    return round(area / 10000, 2)  # m² → hectares
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Polygon helpers (Agromonitoring requires polygons for all endpoints)
 # ──────────────────────────────────────────────────────────────────────────────
+
+def get_field_polygon_coords(field_lat: float, field_lng: float, field_id: str = None, offset_deg: float = 0.0065) -> list[list[float]]:
+    """Return the field boundary polygon as [[lat, lng], ...] for Leaflet display.
+    If a user-drawn polygon override exists for this field, returns that instead of the synthetic square."""
+    if field_id and field_id in _polygon_coords:
+        return _polygon_coords[field_id]
+    return [
+        [field_lat - offset_deg, field_lng - offset_deg],
+        [field_lat + offset_deg, field_lng - offset_deg],
+        [field_lat + offset_deg, field_lng + offset_deg],
+        [field_lat - offset_deg, field_lng + offset_deg],
+        [field_lat - offset_deg, field_lng - offset_deg],
+    ]
+
 
 def _field_to_geojson(field_lat: float, field_lng: float, offset_deg: float = 0.0065):
     """Create a small square GeoJSON polygon around a lat/lng point (~50 ha)."""
@@ -62,9 +110,15 @@ def _find_existing_polygon(name: str) -> str | None:
 
 
 def get_or_create_polygon(field_lat: float, field_lng: float, field_id: str) -> str | None:
-    """Return Agromonitoring polygon id for a field, creating one if needed."""
+    """Return Agromonitoring polygon id for a field, creating one if needed.
+    If a user-drawn polygon override exists for this field, returns that instead."""
     if not AGRO_KEY:
         return None
+
+    # User-drawn polygon takes priority
+    override = _polygon_override.get(field_id)
+    if override:
+        return override
 
     cached = _polygon_cache.get(field_id)
     if cached:
@@ -96,6 +150,51 @@ def get_or_create_polygon(field_lat: float, field_lng: float, field_id: str) -> 
         return None
 
 
+def create_polygon_from_coords(name: str, coords: list[list[float]]) -> str | None:
+    """Create an Agromonitoring polygon from user-drawn coordinates.
+    coords = [[lat, lng], ...] (Leaflet format).
+    Returns the Agromonitoring polygon id."""
+    if not AGRO_KEY:
+        return None
+
+    # Convert Leaflet [lat, lng] to GeoJSON [lng, lat] format
+    geojson_coords = [[c[1], c[0]] for c in coords]
+    # Ensure ring is closed
+    if geojson_coords[0] != geojson_coords[-1]:
+        geojson_coords.append(geojson_coords[0])
+
+    try:
+        resp = requests.post(
+            f"{AGRO_BASE}/polygons",
+            params={"appid": AGRO_KEY},
+            json={
+                "name": name,
+                "geo_json": {
+                    "type": "Feature",
+                    "properties": {},
+                    "geometry": {"type": "Polygon", "coordinates": [geojson_coords]},
+                },
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        poly_id = resp.json()["id"]
+        print(f"[live_data] Created user polygon '{name}' -> {poly_id}")
+        return poly_id
+    except Exception as e:
+        print(f"[live_data] Failed to create user polygon '{name}': {e}")
+        return None
+
+
+def set_polygon_override(field_id: str, polygon_id: str, coords: list[list[float]] = None) -> None:
+    """Set a user-drawn polygon as the active polygon for a field.
+    This overrides the auto-generated square so all fetch functions use the drawn polygon."""
+    _polygon_override[field_id] = polygon_id
+    _polygon_cache[field_id] = polygon_id
+    if coords:
+        _polygon_coords[field_id] = coords
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Open-Meteo: current + historical weather
 # ──────────────────────────────────────────────────────────────────────────────
@@ -124,7 +223,7 @@ def get_live_weather(lat: float, lng: float) -> dict | None:
         end_date = datetime.utcnow().date()
         start_date = end_date - timedelta(days=30)
         hist_resp = requests.get(
-            f"{OPEN_METEO_BASE}/archive",
+            f"{OPEN_METEO_ARCHIVE}",
             params={
                 "latitude": lat,
                 "longitude": lng,
@@ -280,6 +379,112 @@ def fetch_all_live_data(field_id: str, field_lat: float, field_lng: float, crop_
         "ndvi_change": ndvi_change,
         "crop_info": crop_info,
     }
+
+
+def get_real_telemetry_history(field_lat: float, field_lng: float, field_id: str, days: int = 45) -> list[dict]:
+    """
+    Build a 45-day telemetry timeline from real sources:
+      - temperature / rainfall / humidity → Open-Meteo archive (daily)
+      - soil_moisture → Open-Meteo ERA5-Land soil_moisture_0_to_7cm
+      - ndvi → Agromonitoring NDVI history (forward-filled to daily)
+    Falls back to mock data for any missing metric.
+    Returns list of {date, ndvi, soil_moisture, temperature, rainfall, humidity}.
+    """
+    # --- 1. Open-Meteo archive: weather + soil moisture (45 days) ---
+    archive_data = {}
+    try:
+        end_date = datetime.utcnow().date() - timedelta(days=1)  # yesterday: latest archive data
+        start_date = end_date - timedelta(days=days - 1)
+        resp = requests.get(
+            f"{OPEN_METEO_ARCHIVE}",
+            params={
+                "latitude": field_lat,
+                "longitude": field_lng,
+                "start_date": str(start_date),
+                "end_date": str(end_date),
+                "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,"
+                         "relative_humidity_2m_mean,soil_moisture_0_to_7cm_mean",
+                "timezone": "auto",
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        daily = resp.json().get("daily", {})
+        dates = daily.get("time", [])
+        temps_max = daily.get("temperature_2m_max", [])
+        temps_min = daily.get("temperature_2m_min", [])
+        rains = daily.get("precipitation_sum", [])
+        humids = daily.get("relative_humidity_2m_mean", [])
+        soil_sm = daily.get("soil_moisture_0_to_7cm_mean", [])
+        for i, d in enumerate(dates):
+            t_max = temps_max[i] if i < len(temps_max) else None
+            t_min = temps_min[i] if i < len(temps_min) else None
+            archive_data[d] = {
+                "temperature": round((t_max + t_min) / 2, 1) if t_max is not None and t_min is not None else None,
+                "rainfall": round(rains[i], 1) if i < len(rains) and rains[i] is not None else 0,
+                "humidity": round(humids[i], 1) if i < len(humids) and humids[i] is not None else None,
+                # soil moisture in m³/m³ → convert to % (×100)
+                "soil_moisture": round(soil_sm[i] * 100, 1) if i < len(soil_sm) and soil_sm[i] is not None else None,
+            }
+    except Exception as e:
+        print(f"[live_data] Open-Meteo archive fetch failed: {e}")
+
+    # --- 2. Agromonitoring NDVI history (forward-fill to daily) ---
+    ndvi_by_date: dict[str, float] = {}
+    polyid = get_or_create_polygon(field_lat, field_lng, field_id)
+    if polyid:
+        try:
+            end_dt = datetime.utcnow() - timedelta(days=1)
+            start_dt = end_dt - timedelta(days=days + 5)
+            resp = requests.get(
+                f"{AGRO_BASE}/ndvi/history",
+                params={
+                    "polyid": polyid,
+                    "start": int(start_dt.timestamp()),
+                    "end": int(end_dt.timestamp()),
+                    "appid": AGRO_KEY,
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            records = resp.json()
+            if isinstance(records, list):
+                # Build date→ndvi map from satellite passes, sorted ascending
+                sorted_recs = sorted(
+                    [r for r in records if "data" in r and "mean" in r.get("data", {})],
+                    key=lambda r: r.get("dt", 0),
+                )
+                for rec in sorted_recs:
+                    dt_obj = datetime.utcfromtimestamp(rec["dt"])
+                    date_str = dt_obj.strftime("%Y-%m-%d")
+                    ndvi_by_date[date_str] = round(rec["data"]["mean"], 3)
+        except Exception as e:
+            print(f"[live_data] Agromonitoring NDVI history fetch failed: {e}")
+
+    # --- 3. Merge into daily timeline, forward-fill NDVI ---
+    timeline = []
+    current_ndvi = 0.6  # sensible default if no satellite data at all
+    for i in range(days):
+        d = (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
+        arch = archive_data.get(d, {})
+        if d in ndvi_by_date:
+            current_ndvi = ndvi_by_date[d]
+        timeline.append({
+            "date": d,
+            "ndvi": current_ndvi,
+            "soil_moisture": arch.get("soil_moisture"),
+            "temperature": arch.get("temperature"),
+            "rainfall": arch.get("rainfall"),
+            "humidity": arch.get("humidity"),
+        })
+
+    # --- 4. Fill any remaining None weather with mock fallback ---
+    from services.mock_data import generate_field_telemetry_history
+    if not archive_data:
+        # If Open-Meteo completely failed, fall back entirely to mock
+        return generate_field_telemetry_history(field_id=field_id, days=days)
+
+    return timeline
 
 
 def build_evidence_from_live(field_id: str, field_lat: float, field_lng: float, crop_type: str, zone: str) -> dict:

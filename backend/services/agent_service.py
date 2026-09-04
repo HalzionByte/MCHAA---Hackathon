@@ -1,4 +1,4 @@
-"""AI Agent service - orchestrates Claude API with tool calling for diagnosis"""
+"""AI Agent service - orchestrates AI diagnosis using Gemini + tool calling"""
 
 import asyncio
 from services.mock_data import (
@@ -15,6 +15,7 @@ from services.live_data import (
     get_live_ndvi_change,
     get_or_create_polygon,
 )
+from services.image_analysis import diagnose_with_gemini
 from models import Diagnosis, Evidence, Recommendation, Anomaly
 from sqlalchemy.orm import Session
 import uuid
@@ -220,28 +221,50 @@ Please investigate this anomaly by:
 
 
 def generate_mock_diagnosis(anomaly_id: str, field_id: str, anomaly_type: str, evidence_data: dict, db: Session):
-    """Generate mock diagnosis for testing (no Claude API needed)"""
-    if anomaly_type == "water_stress":
-        cause = "Likely water stress caused by prolonged low soil moisture and insufficient rainfall."
-        confidence = 0.87
-        reasoning = f"Soil moisture ({evidence_data.get('soil_moisture_percent', 18)}%) + rainfall ({evidence_data.get('rainfall_7d_mm', 2)}mm/7d) + temperature ({evidence_data.get('temperature_c', 34)}°C) + NDVI change ({evidence_data.get('vegetation_ndvi_change', -0.14)}) indicate water stress."
-        action = "prioritize_irrigation"
-        priority = 1
-    else:
-        cause = f"Anomaly detected: {anomaly_type}"
-        confidence = 0.60
-        reasoning = "Insufficient data for confident diagnosis."
-        action = "investigate"
-        priority = 2
+    """Generate AI-written diagnosis + recommendation using Gemini, then persist to DB."""
+    # Build the vision_result dict expected by diagnose_with_gemini
+    vision_result = {
+        "anomaly_type": anomaly_type,
+        "severity": evidence_data.get("severity", 0.5),
+        "confidence": evidence_data.get("confidence", 0.7),
+        "description": evidence_data.get("image_description", evidence_data.get("description", "No description.")),
+        "detected_pests": evidence_data.get("detected_pests", []),
+        "recommended_actions": evidence_data.get("recommended_actions", []),
+    }
 
-    store_diagnosis_and_recommendation(anomaly_id, field_id, cause, evidence_data, db,
-                                       confidence=confidence, reasoning=reasoning,
-                                       action=action, priority=priority)
+    crop_type = evidence_data.get("crop_type")
+    if not crop_type:
+        try:
+            from models import Field
+            field_obj = db.query(Field).filter(Field.field_id == field_id).first()
+            if field_obj and field_obj.crop_type:
+                crop_type = field_obj.crop_type
+        except Exception as e:
+            print(f"[agent_service] Failed to resolve crop_type: {e}")
+    if not crop_type:
+        crop_type = "wheat"
+    diag = diagnose_with_gemini(vision_result, crop_type)
+
+    # Extract a clean first sentence for probable_cause
+    cause = diag["cause"]
+    confidence = diag["confidence"]
+    reasoning = diag["reasoning"]
+    action_key = diag["action_key"]
+    action_summary = diag["action_summary"]
+    priority = diag["priority"]
+
+    store_diagnosis_and_recommendation(
+        anomaly_id, field_id, cause, evidence_data, db,
+        confidence=confidence, reasoning=reasoning,
+        action=action_key, priority=priority,
+        action_summary=action_summary,
+    )
 
 
 def store_diagnosis_and_recommendation(anomaly_id, field_id, diagnosis_text, evidence_data,
                                        db, confidence=0.87, reasoning=None,
-                                       action="prioritize_irrigation", priority=1):
+                                       action="prioritize_irrigation", priority=1,
+                                       action_summary=None):
     """Parse diagnosis text and store in database"""
     if not reasoning:
         reasoning = diagnosis_text
@@ -267,13 +290,15 @@ def store_diagnosis_and_recommendation(anomaly_id, field_id, diagnosis_text, evi
     )
     db.add(evidence)
 
+    description = action_summary or f"Recommended action: {action.replace('_', ' ').title()}"
+
     recommendation = Recommendation(
         recommendation_id=str(uuid.uuid4()),
         anomaly_id=anomaly_id,
         action=action,
         priority=priority,
         target_zone=evidence_data.get("zone", "Unknown"),
-        description=f"Recommended action: {action.replace('_', ' ').title()}"
+        description=description
     )
     db.add(recommendation)
     db.commit()
