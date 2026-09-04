@@ -202,6 +202,12 @@ export default {
   "anomaly.type.pest_infestation": "Pest Infestation",
   "anomaly.type.nutrient_deficiency": "Nutrient Deficiency",
   "anomaly.type.fungal_infection": "Fungal Infection",
+  "anomaly.type.healthy": "Healthy",
+  "anomaly.type.insect_infestation": "Insect Infestation",
+  "anomaly.type.pest_attack": "Pest Attack",
+  "anomaly.type.disease": "Disease",
+  "anomaly.type.nutrient_physical_harm": "Nutrient / Physical Harm",
+  "anomaly.type.waterlogging": "Waterlogging",
 
   // Language
   "lang.en": "EN",

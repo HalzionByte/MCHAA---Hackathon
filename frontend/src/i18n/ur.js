@@ -202,6 +202,12 @@ export default {
   "anomaly.type.pest_infestation": "کیڑوں کا حملہ",
   "anomaly.type.nutrient_deficiency": "غذائی کمزوری",
   "anomaly.type.fungal_infection": "فنگل انفیکشن",
+  "anomaly.type.healthy": "صحت مند",
+  "anomaly.type.insect_infestation": "کیڑوں کا حملہ",
+  "anomaly.type.pest_attack": "کیڑوں کا حملہ",
+  "anomaly.type.disease": "بیماری",
+  "anomaly.type.nutrient_physical_harm": "غذائی / جسمانی نقصان",
+  "anomaly.type.waterlogging": "پانی کا انجماد",
 
   // Language
   "lang.en": "EN",
