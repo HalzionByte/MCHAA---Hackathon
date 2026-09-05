@@ -205,3 +205,89 @@ class TelemetryDataPointSchema(BaseModel):
     humidity: float
 
 
+# ===== Service Marketplace Schemas =====
+class ServiceProviderSchema(BaseModel):
+    provider_id: str
+    name: str
+    service_type: str
+    district: str
+    price_per_acre_pkr: float
+    rating: float
+    phone: str
+    eta_hours: int
+
+    class Config:
+        from_attributes = True
+
+class DispatchServiceRequestSchema(BaseModel):
+    field_id: str
+    provider_id: str
+    anomaly_id: Optional[str] = None
+    acres: float = 1.0
+
+class DispatchServiceResponseSchema(BaseModel):
+    dispatch_id: str
+    field_id: str
+    provider_name: str
+    service_type: str
+    status: str
+    acres: float
+    total_cost_pkr: float
+    eta_hours: int
+    confirmation_code: str
+    created_at: str
+
+class CostSavingsCalculatorSchema(BaseModel):
+    acres: float
+    anomaly_severity: float
+    blanket_spray_cost_pkr: float
+    spot_drone_cost_pkr: float
+    savings_pkr: float
+    savings_percent: float
+    water_saved_liters: float
+    chemical_reduction_pct: float
+
+
+# ===== Feature 3: WhatsApp Work Order Schemas =====
+class WhatsAppWorkOrderRequestSchema(BaseModel):
+    field_id: str
+    anomaly_id: Optional[str] = None
+    worker_name: str = "Field Worker"
+    worker_phone: str = "+923001234567"
+    dialect: str = "ur"  # ur, pa, sd, en
+    sector: Optional[str] = "Zone B3"
+    action: Optional[str] = "Pesticide Spraying"
+    dosage: Optional[str] = "250 ml/acre"
+
+class WhatsAppWorkOrderResponseSchema(BaseModel):
+    work_order_id: str
+    field_id: str
+    worker_phone: str
+    dialect: str
+    spoken_audio_script: str
+    audio_url: str
+    whatsapp_deep_link: str
+    status: str
+    created_at: str
+
+class WorkOrderConfirmRequestSchema(BaseModel):
+    work_order_id: str
+    photo_url: Optional[str] = None
+    note: Optional[str] = None
+
+
+# ===== Feature 6: PakAgri-Vision Dataset Exporter Schemas =====
+class RLHFFeedbackRequestSchema(BaseModel):
+    anomaly_id: str
+    agronomist_label: str          # corrected anomaly type label
+    corrected_cause: Optional[str] = None
+    notes: Optional[str] = None
+
+class DatasetExportQuerySchema(BaseModel):
+    fmt: str = "jsonl"             # jsonl | coco | huggingface
+    limit: int = 500
+
+
+
+
+

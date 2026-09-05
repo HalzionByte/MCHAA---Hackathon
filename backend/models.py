@@ -106,3 +106,46 @@ class Recommendation(Base):
     
     anomaly = relationship("Anomaly", back_populates="recommendation")
 
+
+class ServiceProvider(Base):
+    __tablename__ = "service_providers"
+
+    provider_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(255), nullable=False)
+    service_type = Column(String(50), nullable=False)  # drone_spray, tractor_spray, harvester
+    district = Column(String(100), nullable=False, default="Multan")
+    price_per_acre_pkr = Column(Float, nullable=False)
+    rating = Column(Float, default=4.8)
+    phone = Column(String(50), nullable=False)
+    eta_hours = Column(Integer, default=2)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class ServiceDispatch(Base):
+    __tablename__ = "service_dispatches"
+
+    dispatch_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    field_id = Column(String(36), ForeignKey("fields.field_id"), nullable=False)
+    anomaly_id = Column(String(36), ForeignKey("anomalies.anomaly_id"), nullable=True)
+    provider_id = Column(String(36), ForeignKey("service_providers.provider_id"), nullable=False)
+    status = Column(String(50), default="requested")  # requested, dispatched, in_transit, completed
+    acres = Column(Float, default=1.0)
+    total_cost_pkr = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class WorkOrder(Base):
+    __tablename__ = "work_orders"
+
+    work_order_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    field_id = Column(String(36), ForeignKey("fields.field_id"), nullable=False)
+    anomaly_id = Column(String(36), ForeignKey("anomalies.anomaly_id"), nullable=True)
+    worker_name = Column(String(100), default="Field Worker")
+    worker_phone = Column(String(50), nullable=False)
+    dialect = Column(String(20), default="ur")  # ur, pa, sd, en
+    instructions = Column(Text, nullable=False)
+    status = Column(String(50), default="dispatched")  # dispatched, confirmed, completed
+    confirmation_photo_url = Column(Text, nullable=True)
+    confirmation_note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+
