@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from 'react';
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, Volume2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
@@ -37,18 +37,6 @@ export default function AudioAlertPlayer({ text, playing, onPlay, onPause, label
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 glass-strong" style={{ height: 80 }}>
       <div className="max-w-7xl mx-auto h-full px-4 flex items-center gap-4">
-        {/* Status Dot */}
-        <div className="flex-shrink-0">
-          <span
-            className="block w-4 h-4 rounded-full"
-            style={{
-              background: playing ? 'var(--emerald)' : 'var(--crimson)',
-              boxShadow: playing ? '0 0 8px var(--emerald)' : '0 0 8px var(--crimson)',
-              animation: 'pulse-traffic-red 2s ease-in-out infinite',
-            }}
-          />
-        </div>
-
         {/* Play/Pause Button */}
         <button
           onClick={speak}
