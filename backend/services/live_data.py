@@ -1,6 +1,6 @@
 """
 Live data service — fetches real-world data from Open-Meteo + Agromonitoring.
-All functions fall back to mock on network/API error so the demo never crashes.
+Returns None for any data source that fails.
 """
 
 import os
@@ -9,12 +9,7 @@ import math
 import requests
 from datetime import datetime, timedelta
 
-from services.mock_data import (
-    get_mock_soil_data,
-    get_mock_weather_data,
-    get_mock_historical_weather,
-    get_crop_by_id,
-)
+from services.mock_data import get_crop_by_id
 
 AGRO_KEY = os.getenv("AGROMONITORING_API_KEY", "")
 AGRO_BASE = "https://api.agromonitoring.com/agro/1.0"
@@ -186,6 +181,11 @@ def create_polygon_from_coords(name: str, coords: list[list[float]]) -> str | No
         return None
 
 
+def store_polygon_coords(field_id: str, coords: list[list[float]]) -> None:
+    """Store user-drawn polygon coordinates so the field page can display them."""
+    _polygon_coords[field_id] = coords
+
+
 def set_polygon_override(field_id: str, polygon_id: str, coords: list[list[float]] = None) -> None:
     """Set a user-drawn polygon as the active polygon for a field.
     This overrides the auto-generated square so all fetch functions use the drawn polygon."""
@@ -202,7 +202,7 @@ def set_polygon_override(field_id: str, polygon_id: str, coords: list[list[float
 def get_live_weather(lat: float, lng: float) -> dict | None:
     """
     Fetch current weather + 30-day historical aggregates from Open-Meteo.
-    Returns dict matching the shape of get_mock_weather_data().
+    Returns dict with temperature, humidity, rainfall, wind data.
     """
     try:
         # Current weather
@@ -271,7 +271,7 @@ def get_live_weather(lat: float, lng: float) -> dict | None:
 def get_live_soil(polyid: str) -> dict | None:
     """
     Fetch current soil data from Agromonitoring.
-    Returns dict matching the shape of get_mock_soil_data().
+    Returns dict with soil_moisture_percent and temperature_10cm_c.
     """
     if not AGRO_KEY or not polyid:
         return None
@@ -387,8 +387,8 @@ def get_real_telemetry_history(field_lat: float, field_lng: float, field_id: str
       - temperature / rainfall / humidity → Open-Meteo archive (daily)
       - soil_moisture → Open-Meteo ERA5-Land soil_moisture_0_to_7cm
       - ndvi → Agromonitoring NDVI history (forward-filled to daily)
-    Falls back to mock data for any missing metric.
     Returns list of {date, ndvi, soil_moisture, temperature, rainfall, humidity}.
+    Returns empty list if Open-Meteo fails.
     """
     # --- 1. Open-Meteo archive: weather + soil moisture (45 days) ---
     archive_data = {}
@@ -478,19 +478,17 @@ def get_real_telemetry_history(field_lat: float, field_lng: float, field_id: str
             "humidity": arch.get("humidity"),
         })
 
-    # --- 4. Fill any remaining None weather with mock fallback ---
-    from services.mock_data import generate_field_telemetry_history
     if not archive_data:
-        # If Open-Meteo completely failed, fall back entirely to mock
-        return generate_field_telemetry_history(field_id=field_id, days=days)
+        # If Open-Meteo completely failed, return empty timeline
+        return []
 
     return timeline
 
 
 def build_evidence_from_live(field_id: str, field_lat: float, field_lng: float, crop_type: str, zone: str) -> dict:
     """
-    Build the evidence_data dict (same shape as the old hardcoded dict) from live sources.
-    Falls back to mock values for any missing field.
+    Build the evidence_data dict from live sources.
+    Returns None for any field where live data is unavailable.
     """
     live = fetch_all_live_data(field_id, field_lat, field_lng, crop_type)
 
@@ -500,11 +498,11 @@ def build_evidence_from_live(field_id: str, field_lat: float, field_lng: float, 
     crop = live["crop_info"]
 
     return {
-        "soil_moisture_percent": soil.get("soil_moisture_percent") or get_mock_soil_data(field_id)["soil_moisture_percent"],
-        "rainfall_7d_mm": weather.get("rainfall_7d_mm") if weather.get("rainfall_7d_mm") is not None else get_mock_weather_data(field_id)["rainfall_7d_mm"],
-        "temperature_c": weather.get("temperature_c") if weather.get("temperature_c") is not None else get_mock_weather_data(field_id)["temperature_c"],
-        "humidity_percent": weather.get("humidity_percent") if weather.get("humidity_percent") is not None else get_mock_weather_data(field_id)["humidity_percent"],
-        "vegetation_ndvi_change": live["ndvi_change"] if live["ndvi_change"] is not None else -0.14,
+        "soil_moisture_percent": soil.get("soil_moisture_percent"),
+        "rainfall_7d_mm": weather.get("rainfall_7d_mm"),
+        "temperature_c": weather.get("temperature_c"),
+        "humidity_percent": weather.get("humidity_percent"),
+        "vegetation_ndvi_change": live["ndvi_change"],
         "zone": zone,
         "_live_sources": {
             "weather_available": weather is not None,

@@ -9,7 +9,6 @@ import EvidenceCard from '../../../components/EvidenceCard';
 import DiagnosisCard from '../../../components/DiagnosisCard';
 import RecommendationCard from '../../../components/RecommendationCard';
 import HealthTimeline from '../../../components/HealthTimeline';
-import CropSelectorModal from '../../../components/CropSelectorModal';
 import AudioAlertPlayer from '../../../components/AudioAlertPlayer';
 import { getField, getAnomaly } from '../../../api/api';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -73,7 +72,6 @@ export default function FieldPage() {
   const router = useRouter();
   const { t, lang } = useLanguage();
   const [showAnalysis, setShowAnalysis] = useState(false);
-  const [showCropSelector, setShowCropSelector] = useState(false);
   const [field, setField] = useState(null);
   const [anomaly, setAnomaly] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -133,19 +131,6 @@ export default function FieldPage() {
     router.push(`/anomaly/${anomalyId}`);
   };
 
-  const handleCropChanged = async () => {
-    try {
-      const fieldData = await getField(fieldId);
-      setField(fieldData);
-      if (fieldData?.anomalies?.length) {
-        const anomalyData = await getAnomaly(fieldData.anomalies[0].anomaly_id);
-        setAnomaly(anomalyData);
-      }
-    } catch (err) {
-      console.error('Failed to reload field data:', err);
-    }
-  };
-
   const handleAreaAnalyzed = useCallback((analysis) => {
     setDrawnFieldId(analysis.field_id);
     setDrawnEvidence(analysis.evidence);
@@ -174,20 +159,16 @@ export default function FieldPage() {
               {loading ? t('field.loading') : field?.name || t('field.analysis')}
             </h1>
             {!loading && field && (
-              <button
-                onClick={() => setShowCropSelector(true)}
-                className="flex items-center gap-2 mt-1 text-base text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer group"
+              <div
+                className="flex items-center gap-2 mt-1 text-base text-[var(--text-muted)]"
               >
                 <span className="text-xl">{cropEmojis[field.crop_type] || '🌱'}</span>
                 <span className="capitalize">{cropNameKeys[field.crop_type] ? t(cropNameKeys[field.crop_type]) : field.crop_type}</span>
-                <span className="text-sm text-[var(--cyan)] opacity-0 group-hover:opacity-100 transition-opacity">
-                  {t('field.tapToChange')}
-                </span>
                 <span className="text-[var(--card-border)]">·</span>
                 <span>
                   {field.anomalies?.length === 1 ? t('field.anomalyOne') : t('field.anomalyCount', { count: field.anomalies?.length || 0 })}
                 </span>
-              </button>
+              </div>
             )}
           </div>
         </div>
@@ -248,15 +229,6 @@ export default function FieldPage() {
           )}
         </div>
       </div>
-
-      {/* Crop Selector Modal */}
-      <CropSelectorModal
-        isOpen={showCropSelector}
-        onClose={() => setShowCropSelector(false)}
-        fieldId={fieldId}
-        currentCropType={field?.crop_type}
-        onCropChanged={handleCropChanged}
-      />
 
       {/* Analysis Modal */}
       {showAnalysis && (

@@ -4,14 +4,13 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Anomaly, Diagnosis, Evidence, Recommendation, Field, Farm, Image
 from schemas import AnalyzeRequestSchema, UpdateFieldCropSchema, CreateFieldRequestSchema
-from services.agent_service import generate_mock_diagnosis
-from services.live_data import build_evidence_from_live, get_real_telemetry_history, get_field_polygon_coords, create_polygon_from_coords, set_polygon_override, compute_polygon_centroid, compute_polygon_area_hectares
+from services.agent_service import generate_ai_diagnosis
+from services.live_data import build_evidence_from_live, get_real_telemetry_history, get_field_polygon_coords, create_polygon_from_coords, set_polygon_override, store_polygon_coords, compute_polygon_centroid, compute_polygon_area_hectares
 from services.image_analysis import analyze_crop_image
 from services.mock_data import (
     get_all_crops,
     get_crop_by_id,
     generate_rotation_advice,
-    generate_field_telemetry_history
 )
 
 from datetime import datetime
@@ -83,7 +82,7 @@ async def analyze_image(request: AnalyzeRequestSchema, db: Session = Depends(get
 
     # 5. Persist Diagnosis + Recommendation
     try:
-        generate_mock_diagnosis(
+        generate_ai_diagnosis(
             anomaly.anomaly_id, request.field_id,
             vision_result["anomaly_type"], evidence_data, db,
         )
@@ -405,7 +404,7 @@ async def get_field_rotation_advice(field_id: str, db: Session = Depends(get_db)
 
 @router.get("/api/fields/{field_id}/telemetry")
 async def get_field_telemetry(field_id: str, days: int = 45, db: Session = Depends(get_db)):
-    """Get historical telemetry timeseries from real satellite/weather data, with mock fallback"""
+    """Get historical telemetry timeseries from real satellite/weather data"""
     field = db.query(Field).filter(Field.field_id == field_id).first()
     if not field:
         return JSONResponse(
@@ -423,10 +422,9 @@ async def get_field_telemetry(field_id: str, days: int = 45, db: Session = Depen
         if result:
             return result
     except Exception as e:
-        print(f"[endpoints] Live telemetry failed, falling back to mock: {e}")
+        print(f"[endpoints] Live telemetry failed: {e}")
 
-    # Fallback to mock-generated telemetry
-    return generate_field_telemetry_history(field_id=field_id, days=days, crop_type=field.crop_type)
+    return []
 
 
 # ============================================================================
@@ -463,7 +461,10 @@ async def create_field_from_polygon(request: CreateFieldRequestSchema, db: Sessi
     db.commit()
     db.refresh(field)
 
-    # Create Agromonitoring polygon from drawn coords
+    # Always store user-drawn polygon coords so the field page displays them
+    store_polygon_coords(field_id, request.polygon)
+
+    # Best-effort: register polygon on Agromonitoring for soil/NDVI data
     polyid = create_polygon_from_coords(request.name, request.polygon)
     if polyid:
         set_polygon_override(field_id, polyid, request.polygon)
@@ -522,9 +523,6 @@ async def analyze_drawn_area(
         )
     except Exception as e:
         print(f"[endpoints] Live telemetry failed for drawn area: {e}")
-        telemetry = generate_field_telemetry_history(
-            field_id=field_id, days=45, crop_type=field.crop_type
-        )
 
     # Anomaly detection against crop optimal range
     crop_info = get_crop_by_id(field.crop_type)
@@ -566,8 +564,8 @@ async def analyze_drawn_area(
         db.refresh(anomaly)
         persisted_anomaly_id = anomaly.anomaly_id
 
-        # generate_mock_diagnosis adds Evidence + Diagnosis + Recommendation rows
-        generate_mock_diagnosis(anomaly.anomaly_id, field_id, anomaly_type, evidence, db)
+        # generate_ai_diagnosis adds Evidence + Diagnosis + Recommendation rows
+        generate_ai_diagnosis(anomaly.anomaly_id, field_id, anomaly_type, evidence, db)
         db.commit()
     except Exception as e:
         print(f"[endpoints] Failed to persist drawn-area analysis: {e}")

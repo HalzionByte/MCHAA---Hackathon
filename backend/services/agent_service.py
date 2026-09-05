@@ -1,13 +1,7 @@
 """AI Agent service - orchestrates AI diagnosis using Gemini + tool calling"""
 
 import asyncio
-from services.mock_data import (
-    get_mock_soil_data,
-    get_mock_weather_data,
-    get_mock_historical_weather,
-    get_mock_crop_history,
-    get_crop_by_id,
-)
+from services.mock_data import get_crop_by_id
 from services.live_data import (
     fetch_all_live_data,
     get_live_soil,
@@ -82,7 +76,7 @@ TOOLS = [
 
 
 def execute_tool(tool_name: str, tool_input: dict) -> dict:
-    """Execute a tool — live data first, mock fallback."""
+    """Execute a tool — live data only, None if unavailable."""
     field_id = tool_input.get("field_id", "")
     ctx = _field_context.get(field_id, {})
     lat = ctx.get("lat", 31.5204)
@@ -94,17 +88,14 @@ def execute_tool(tool_name: str, tool_input: dict) -> dict:
         if polyid:
             live = get_live_soil(polyid)
             if live is not None:
-                # Merge with mock NPK/pH (not available from Agromonitoring)
-                mock = get_mock_soil_data(field_id)
-                return {**mock, **{k: v for k, v in live.items() if v is not None}}
-        return get_mock_soil_data(field_id)
+                return live
+        return None
 
     elif tool_name == "get_weather_data":
         live = get_live_weather(lat, lng)
         if live is not None:
-            mock = get_mock_weather_data(field_id)
-            return {**mock, **{k: v for k, v in live.items() if v is not None and not k.startswith("_")}}
-        return get_mock_weather_data(field_id)
+            return {k: v for k, v in live.items() if not k.startswith("_")}
+        return None
 
     elif tool_name == "get_historical_weather":
         days = tool_input.get("days", 30)
@@ -113,16 +104,16 @@ def execute_tool(tool_name: str, tool_input: dict) -> dict:
             hist = live["_historical"]
             return {
                 "days": days,
-                "avg_temperature_c": hist.get("avg_temperature_c") or 32,
-                "avg_humidity_percent": hist.get("avg_humidity_percent") or 50,
-                "total_rainfall_mm": hist.get("total_rainfall_mm") or 45,
-                "max_temperature_c": hist.get("max_temperature_c") or 38,
-                "min_temperature_c": hist.get("min_temperature_c") or 28,
+                "avg_temperature_c": hist.get("avg_temperature_c"),
+                "avg_humidity_percent": hist.get("avg_humidity_percent"),
+                "total_rainfall_mm": hist.get("total_rainfall_mm"),
+                "max_temperature_c": hist.get("max_temperature_c"),
+                "min_temperature_c": hist.get("min_temperature_c"),
             }
-        return get_mock_historical_weather(field_id, days)
+        return None
 
     elif tool_name == "get_crop_history":
-        return get_mock_crop_history(field_id)
+        return None
 
     return {"error": f"Unknown tool: {tool_name}"}
 
@@ -154,7 +145,7 @@ async def run_agent(anomaly_id: str, field_id: str, anomaly_type: str, evidence_
 
         api_key = os.getenv("CLAUDE_API_KEY")
         if not api_key or not client:
-            return generate_mock_diagnosis(anomaly_id, field_id, anomaly_type, evidence_data, db)
+            return generate_ai_diagnosis(anomaly_id, field_id, anomaly_type, evidence_data, db)
 
         system_prompt = """You are an expert agricultural AI system diagnosing crop health anomalies.
 
@@ -214,13 +205,13 @@ Please investigate this anomaly by:
 
     except Exception as e:
         print(f"Claude API error: {e}")
-        return generate_mock_diagnosis(anomaly_id, field_id, anomaly_type, evidence_data, db)
+        return generate_ai_diagnosis(anomaly_id, field_id, anomaly_type, evidence_data, db)
     finally:
         if should_close_db and db:
             db.close()
 
 
-def generate_mock_diagnosis(anomaly_id: str, field_id: str, anomaly_type: str, evidence_data: dict, db: Session):
+def generate_ai_diagnosis(anomaly_id: str, field_id: str, anomaly_type: str, evidence_data: dict, db: Session):
     """Generate AI-written diagnosis + recommendation using Gemini, then persist to DB."""
     # Build the vision_result dict expected by diagnose_with_gemini
     vision_result = {

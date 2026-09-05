@@ -6,7 +6,7 @@ from services.live_data import (
     get_live_ndvi_change,
     get_or_create_polygon,
 )
-from services.mock_data import get_mock_soil_data, get_crop_by_id
+from services.mock_data import get_crop_by_id
 
 ANOMALY_MODE = os.getenv("ANOMALY_MODE", "auto")  # "auto" or "force"
 
@@ -18,7 +18,7 @@ def detect_anomaly(image_url: str, field_id: str, field_lat: float = 31.5204,
 
     auto mode  — uses live soil moisture + NDVI change vs. crop optimal range
     force mode — always returns a water_stress anomaly (for guaranteed demos)
-    fallback   — if all APIs fail, returns mock water_stress
+    Returns None for missing live data fields.
     """
     if ANOMALY_MODE == "force":
         return _make_anomaly("water_stress", 0.85, 0.87, "B3", field_lat, field_lng)
@@ -92,10 +92,10 @@ def _make_anomaly(anomaly_type, severity, confidence, zone, lat, lng):
 
 
 def generate_ndvi_change(field_id: str, field_lat: float, field_lng: float, crop_type: str) -> float:
-    """Calculate real NDVI change from satellite history. Falls back to mock."""
+    """Calculate real NDVI change from satellite history. Returns None if unavailable."""
     polyid = get_or_create_polygon(field_lat, field_lng, field_id)
     if polyid:
         change = get_live_ndvi_change(polyid)
         if change is not None:
             return change
-    return -0.14  # mock fallback
+    return None
