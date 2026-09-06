@@ -122,5 +122,3 @@ export default function RecommendationCard({ recommendation, createdAt, simplifi
     </motion.div>
   );
 }
-
-

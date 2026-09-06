@@ -3,30 +3,49 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Anomaly, Diagnosis, Evidence, Recommendation, Field, Farm, Image
-<<<<<<< Updated upstream
-from schemas import AnalyzeRequestSchema, AnomalyResponseSchema, ErrorResponseSchema, UpdateFieldCropSchema
-from services.anomaly_service import detect_anomaly
-from services.agent_service import run_agent
-from services.live_data import build_evidence_from_live
-=======
-from schemas import AnalyzeRequestSchema, UpdateFieldCropSchema, CreateFieldRequestSchema, DispatchServiceRequestSchema, WhatsAppWorkOrderRequestSchema, WorkOrderConfirmRequestSchema, RLHFFeedbackRequestSchema
-from services.marketplace_service import get_service_providers, create_service_dispatch, calculate_spot_vs_blanket_savings
-from services.whatsapp_service import generate_whatsapp_work_order, confirm_work_order
-from services.dataset_exporter import get_dataset_stats, export_dataset, submit_rlhf_feedback
+from schemas import (
+    AnalyzeRequestSchema,
+    UpdateFieldCropSchema,
+    CreateFieldRequestSchema,
+    DispatchServiceRequestSchema,
+    WhatsAppWorkOrderRequestSchema,
+    WorkOrderConfirmRequestSchema,
+    RLHFFeedbackRequestSchema,
+)
+from services.marketplace_service import (
+    get_service_providers,
+    create_service_dispatch,
+    calculate_spot_vs_blanket_savings,
+)
+from services.whatsapp_service import (
+    generate_whatsapp_work_order,
+    confirm_work_order,
+)
+from services.dataset_exporter import (
+    get_dataset_stats,
+    export_dataset,
+    submit_rlhf_feedback,
+)
 from services.agent_service import generate_ai_diagnosis
-from services.live_data import build_evidence_from_live, get_real_telemetry_history, get_field_polygon_coords, create_polygon_from_coords, set_polygon_override, store_polygon_coords, compute_polygon_centroid, compute_polygon_area_hectares
+from services.live_data import (
+    build_evidence_from_live,
+    get_real_telemetry_history,
+    get_field_polygon_coords,
+    create_polygon_from_coords,
+    set_polygon_override,
+    store_polygon_coords,
+    compute_polygon_centroid,
+    compute_polygon_area_hectares,
+)
 from services.image_analysis import analyze_crop_image
->>>>>>> Stashed changes
 from services.mock_data import (
     get_all_crops,
     get_crop_by_id,
     generate_rotation_advice,
-    generate_field_telemetry_history
 )
 
 from datetime import datetime
 import uuid
-import asyncio
 
 from services.voice_service import generate_farmer_voice_script, generate_sms_payload
 
@@ -36,7 +55,9 @@ router = APIRouter()
 @router.post("/api/analyze")
 async def analyze_image(request: AnalyzeRequestSchema, db: Session = Depends(get_db)):
     """
-    Upload image and analyze for anomalies.
+    Upload image and analyze for crop anomalies using Gemini Vision only.
+    Detects infestation, disease, pest attack, harm, or healthy status.
+    Returns: problem detected + recommended solution.
     """
     
     # Validate field exists
@@ -47,64 +68,60 @@ async def analyze_image(request: AnalyzeRequestSchema, db: Session = Depends(get
             content={"error": "invalid_field_id", "message": f"Field {request.field_id} not found"}
         )
 
-    
-    # Create Image record
+    # 1. Create Image record (store truncated URL for base64 data URLs)
+    stored_url = request.image_url
+    if stored_url.startswith("data:"):
+        stored_url = stored_url[:50] + "...(truncated base64)"
     image = Image(
         image_id=str(uuid.uuid4()),
         field_id=request.field_id,
-        image_url=request.image_url,
+        image_url=stored_url,
         source="user_upload"
     )
     db.add(image)
     db.commit()
     db.refresh(image)
     
-    # Detect anomaly — uses live soil/NDVI data in auto mode
-    anomaly_data = detect_anomaly(
-        request.image_url,
-        request.field_id,
-        field_lat=field.boundary_lat,
-        field_lng=field.boundary_lng,
-        crop_type=field.crop_type,
-    )
+    # 2. Gemini Vision: analyze the image for crop health
+    vision_result = analyze_crop_image(request.image_url)
 
-    # Create Anomaly record
+    # 3. Build evidence from vision only (no satellite data)
+    evidence_data = {
+        "image_description": vision_result.get("description", ""),
+        "detected_pests": vision_result.get("detected_pests", []),
+        "recommended_actions": vision_result.get("recommended_actions", []),
+        "severity": vision_result.get("severity", 0.5),
+        "confidence": vision_result.get("confidence", 0.7),
+        "zone": "uploaded_image",
+    }
+
+    # 4. Create Anomaly record — all fields from Gemini's vision output
     anomaly = Anomaly(
         anomaly_id=str(uuid.uuid4()),
         field_id=request.field_id,
         image_id=image.image_id,
-        anomaly_type=anomaly_data["anomaly_type"],
-        severity=anomaly_data["severity"],
-        confidence=anomaly_data["confidence"],
-        zone=anomaly_data["zone"],
-        detected_lat=anomaly_data["lat"],
-        detected_lng=anomaly_data["lng"]
+        anomaly_type=vision_result["anomaly_type"],
+        severity=round(vision_result["severity"], 2),
+        confidence=round(vision_result["confidence"], 2),
+        zone="uploaded_image",
+        detected_lat=field.boundary_lat,
+        detected_lng=field.boundary_lng,
     )
     db.add(anomaly)
     db.commit()
     db.refresh(anomaly)
 
-    # Prepare evidence data — live sources with mock fallback
-    evidence_data = build_evidence_from_live(
-        field_id=request.field_id,
-        field_lat=field.boundary_lat,
-        field_lng=field.boundary_lng,
-        crop_type=field.crop_type,
-        zone=anomaly.zone,
-    )
-    
-    # Run agent asynchronously (non-blocking)
-    asyncio.create_task(
-        run_agent(
-            anomaly.anomaly_id,
-            request.field_id,
-            anomaly.anomaly_type,
-            evidence_data
+    # 5. Persist Diagnosis + Recommendation
+    try:
+        generate_ai_diagnosis(
+            anomaly.anomaly_id, request.field_id,
+            vision_result["anomaly_type"], evidence_data, db,
         )
-    )
+        db.commit()
+    except Exception as e:
+        print(f"[endpoints] Failed to persist image analysis diagnosis: {e}")
+        db.rollback()
 
-    
-    # Return anomaly details with partial response (agent runs in background)
     return get_anomaly_details(anomaly.anomaly_id, db)
 
 @router.get("/api/anomalies/{anomaly_id}")
@@ -169,6 +186,7 @@ async def get_field(field_id: str, db: Session = Depends(get_db)):
             "lat": field.boundary_lat,
             "lng": field.boundary_lng
         },
+        "polygon": get_field_polygon_coords(field.boundary_lat, field.boundary_lng, field_id),
         "anomalies": [
             {
                 "anomaly_id": a.anomaly_id,
@@ -180,6 +198,20 @@ async def get_field(field_id: str, db: Session = Depends(get_db)):
             for a in field.anomalies
         ]
     }
+
+@router.delete("/api/fields/{field_id}")
+async def delete_field(field_id: str, db: Session = Depends(get_db)):
+    """Delete a field and all its anomalies/images/analysis."""
+    field = db.query(Field).filter(Field.field_id == field_id).first()
+    if not field:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "field_not_found", "message": f"Field '{field_id}' not found"}
+        )
+    name = field.name
+    db.delete(field)
+    db.commit()
+    return {"field_id": field_id, "deleted": True, "message": f"Field '{name}' deleted"}
 
 @router.get("/api/farms/{farm_id}")
 async def get_farm(farm_id: str, db: Session = Depends(get_db)):
@@ -202,6 +234,16 @@ async def get_farm(farm_id: str, db: Session = Depends(get_db)):
                 "crop_type": f.crop_type,
                 "status": "alert" if f.anomalies else "healthy",
                 "anomaly_count": len(f.anomalies),
+                "anomalies": [
+                    {
+                        "anomaly_id": a.anomaly_id,
+                        "anomaly_type": a.anomaly_type,
+                        "severity": a.severity,
+                        "zone": a.zone,
+                        "created_at": a.created_at.isoformat() if a.created_at else None,
+                    }
+                    for a in f.anomalies
+                ],
                 "last_analyzed": f.updated_at.isoformat() if f.updated_at else None
             }
             for f in farm.fields
@@ -209,7 +251,10 @@ async def get_farm(farm_id: str, db: Session = Depends(get_db)):
     }
 
 def get_anomaly_details(anomaly_id: str, db: Session):
-    """Helper to fetch complete anomaly with all related data"""
+    """Helper to fetch complete anomaly with all related data.
+    For image-uploaded anomalies (image_id set) the output is simplified to just
+    the AI-detected problem + recommended solution — no satellite/soil/temp data.
+    """
     anomaly = db.query(Anomaly).filter(Anomaly.anomaly_id == anomaly_id).first()
     if not anomaly:
         return JSONResponse(
@@ -221,19 +266,31 @@ def get_anomaly_details(anomaly_id: str, db: Session):
     evidence = db.query(Evidence).filter(Evidence.anomaly_id == anomaly_id).first()
     recommendation = db.query(Recommendation).filter(Recommendation.anomaly_id == anomaly_id).first()
     
+    is_image = anomaly.image_id is not None
     zone = anomaly.zone or "B3"
     saved_usd = 450.0
-    
-    soil_pct = evidence.soil_moisture_percent if evidence else 18
-    temp_val = evidence.temperature_c if evidence else 34
-    farmer_decision = {
-        "status_color": "RED" if anomaly.severity >= 0.7 else "YELLOW",
-        "status_emoji": "🚨" if anomaly.severity >= 0.7 else "⚠️",
-        "headline_what": f"WATER ZONE {zone} TODAY",
-        "headline_why": f"Soil moisture is dry ({soil_pct}%) and temperature is hot ({temp_val}°C).",
-        "urgency_hours": 24 if anomaly.severity >= 0.7 else 72
-    }
-    
+
+    # --- Farmer decision / headline (simplified for image uploads) ---
+    if is_image:
+        anomaly_label = (anomaly.anomaly_type or "unknown").replace("_", " ").title()
+        farmer_decision = {
+            "status_color": "RED" if anomaly.severity >= 0.7 else "YELLOW",
+            "status_emoji": "🚨" if anomaly.severity >= 0.7 else "⚠️",
+            "headline_what": f"AI ANALYSIS — {anomaly_label}",
+            "headline_why": diagnosis.probable_cause if diagnosis else "See analysis details below.",
+            "urgency_hours": 24 if anomaly.severity >= 0.7 else 72
+        }
+    else:
+        soil_pct = evidence.soil_moisture_percent if evidence else 18
+        temp_val = evidence.temperature_c if evidence else 34
+        farmer_decision = {
+            "status_color": "RED" if anomaly.severity >= 0.7 else "YELLOW",
+            "status_emoji": "🚨" if anomaly.severity >= 0.7 else "⚠️",
+            "headline_what": f"WATER ZONE {zone} TODAY",
+            "headline_why": f"Soil moisture is dry ({soil_pct}%) and temperature is hot ({temp_val}°C).",
+            "urgency_hours": 24 if anomaly.severity >= 0.7 else 72
+        }
+
     impact_metrics = {
         "crop_loss_saved_usd": saved_usd,
         "water_saved_liters": 3000.0,
@@ -243,12 +300,37 @@ def get_anomaly_details(anomaly_id: str, db: Session):
     voice_info = generate_farmer_voice_script("Field B", zone, recommendation.action if recommendation else "Water crop", diagnosis.probable_cause if diagnosis else "Dry soil", saved_usd)
     sms_text = generate_sms_payload(zone, farmer_decision["status_color"], farmer_decision["headline_what"], saved_usd)
 
+    # --- Evidence: image anomalies carry AI image description, not satellite data ---
+    if is_image:
+        image_desc = diagnosis.reasoning if diagnosis else (evidence.soil_moisture_percent if evidence else "")
+        evidence_payload = {
+            "image_description": evidence.soil_moisture_percent if evidence else None,
+            "detected_pests": [],
+            "vegetation_ndvi_change": None,
+            "temperature_c": None,
+            "soil_moisture_percent": None,
+        }
+        # The Diagnosis reasoning column already contains the full image description.
+        # Expose it under a clear key for the frontend.
+        if diagnosis:
+            evidence_payload["image_description"] = diagnosis.reasoning
+    else:
+        evidence_payload = {
+            "soil_moisture_percent": evidence.soil_moisture_percent if evidence else None,
+            "rainfall_7d_mm": evidence.rainfall_7d_mm if evidence else None,
+            "temperature_c": evidence.temperature_c if evidence else None,
+            "humidity_percent": evidence.humidity_percent if evidence else None,
+            "vegetation_ndvi_change": evidence.vegetation_ndvi_change if evidence else None,
+        } if evidence else {}
+
     return {
         "anomaly_id": anomaly.anomaly_id,
         "field_id": anomaly.field_id,
         "anomaly_type": anomaly.anomaly_type,
         "severity": anomaly.severity,
         "confidence": anomaly.confidence,
+        "image_id": anomaly.image_id,
+        "source": "image" if is_image else "satellite",
         "detected_region": {
             "zone": zone,
             "coordinates": {
@@ -260,13 +342,7 @@ def get_anomaly_details(anomaly_id: str, db: Session):
         "impact_metrics": impact_metrics,
         "voice_audio_url": voice_info["audio_url"],
         "sms_text": sms_text,
-        "evidence": {
-            "soil_moisture_percent": evidence.soil_moisture_percent if evidence else None,
-            "rainfall_7d_mm": evidence.rainfall_7d_mm if evidence else None,
-            "temperature_c": evidence.temperature_c if evidence else None,
-            "humidity_percent": evidence.humidity_percent if evidence else None,
-            "vegetation_ndvi_change": evidence.vegetation_ndvi_change if evidence else None
-        } if evidence else {},
+        "evidence": evidence_payload,
         "diagnosis": {
             "cause": diagnosis.probable_cause if diagnosis else None,
             "confidence": diagnosis.confidence if diagnosis else None,
@@ -359,15 +435,194 @@ async def get_field_rotation_advice(field_id: str, db: Session = Depends(get_db)
 
 @router.get("/api/fields/{field_id}/telemetry")
 async def get_field_telemetry(field_id: str, days: int = 45, db: Session = Depends(get_db)):
-    """Get historical telemetry timeseries (NDVI, soil moisture, temperature, rainfall, humidity) for a field"""
+    """Get historical telemetry timeseries from real satellite/weather data"""
     field = db.query(Field).filter(Field.field_id == field_id).first()
     if not field:
         return JSONResponse(
             status_code=404,
             content={"error": "field_not_found", "message": f"Field '{field_id}' not found"}
         )
-    
-    return generate_field_telemetry_history(field_id=field_id, days=days, crop_type=field.crop_type)
+
+    try:
+        result = get_real_telemetry_history(
+            field_lat=field.boundary_lat,
+            field_lng=field.boundary_lng,
+            field_id=field_id,
+            days=days,
+        )
+        if result:
+            return result
+    except Exception as e:
+        print(f"[endpoints] Live telemetry failed: {e}")
+
+    return []
+
+
+# ============================================================================
+# USER-DRAWN POLYGON ENDPOINTS
+# ============================================================================
+
+@router.post("/api/fields")
+async def create_field_from_polygon(request: CreateFieldRequestSchema, db: Session = Depends(get_db)):
+    """Create a new field from a user-drawn polygon.
+    The polygon is registered on Agromonitoring for soil/NDVI data."""
+    farm = db.query(Farm).filter(Farm.farm_id == request.farm_id).first()
+    if not farm:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid_farm_id", "message": f"Farm {request.farm_id} not found"}
+        )
+
+    # Compute centroid and area
+    centroid_lat, centroid_lng = compute_polygon_centroid(request.polygon)
+    area_ha = compute_polygon_area_hectares(request.polygon)
+
+    # Create field row first (need field_id for the polygon name)
+    field_id = f"field-{str(uuid.uuid4())[:8]}"
+    field = Field(
+        field_id=field_id,
+        farm_id=request.farm_id,
+        name=request.name,
+        crop_type=request.crop_type,
+        boundary_lat=centroid_lat,
+        boundary_lng=centroid_lng,
+        area_hectares=area_ha,
+    )
+    db.add(field)
+    db.commit()
+    db.refresh(field)
+
+    # Always store user-drawn polygon coords so the field page displays them
+    store_polygon_coords(field_id, request.polygon)
+
+    # Best-effort: register polygon on Agromonitoring for soil/NDVI data
+    polyid = create_polygon_from_coords(request.name, request.polygon)
+    if polyid:
+        set_polygon_override(field_id, polyid, request.polygon)
+        print(f"[endpoints] Created field '{request.name}' with Agromonitoring polygon {polyid}")
+    else:
+        print(f"[endpoints] Warning: field '{request.name}' created but Agromonitoring polygon failed")
+
+    # Return field in the same shape as GET /api/fields/{id}
+    return {
+        "field_id": field.field_id,
+        "farm_id": field.farm_id,
+        "name": field.name,
+        "crop_type": field.crop_type,
+        "boundary": {
+            "lat": field.boundary_lat,
+            "lng": field.boundary_lng
+        },
+        "polygon": request.polygon,
+        "area_hectares": area_ha,
+        "anomalies": []
+    }
+
+
+@router.post("/api/fields/{field_id}/analyze-area")
+async def analyze_drawn_area(
+    field_id: str,
+    db: Session = Depends(get_db),
+):
+    """Analyze a drawn area: fetch live soil/NDVI/weather + anomaly detection.
+    Persists Anomaly + Evidence + Diagnosis + Recommendation so the field page
+    renders the full evidence section. Returns evidence + telemetry + anomaly summary."""
+    field = db.query(Field).filter(Field.field_id == field_id).first()
+    if not field:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "field_not_found", "message": f"Field '{field_id}' not found"}
+        )
+
+    # Fetch evidence from live sources
+    evidence = build_evidence_from_live(
+        field_id=field_id,
+        field_lat=field.boundary_lat,
+        field_lng=field.boundary_lng,
+        crop_type=field.crop_type,
+        zone="drawn_area",
+    )
+
+    # Fetch telemetry timeline
+    telemetry = []
+    try:
+        telemetry = get_real_telemetry_history(
+            field_lat=field.boundary_lat,
+            field_lng=field.boundary_lng,
+            field_id=field_id,
+            days=45,
+        )
+    except Exception as e:
+        print(f"[endpoints] Live telemetry failed for drawn area: {e}")
+
+    # Anomaly detection against crop optimal range
+    crop_info = get_crop_by_id(field.crop_type)
+    severity = 0.0
+    anomaly_type = "healthy"
+    if evidence.get("soil_moisture_percent") is not None and crop_info:
+        optimal = crop_info.get("optimal_soil_moisture_percent", {})
+        if isinstance(optimal, dict):
+            opt_min = optimal.get("min", 20)
+            opt_max = optimal.get("max", 40)
+        else:
+            opt_min, opt_max = 20, 40
+        sm = evidence["soil_moisture_percent"]
+        if sm < opt_min:
+            severity = min(1.0, (opt_min - sm) / opt_min)
+            anomaly_type = "water_stress"
+        elif sm > opt_max:
+            severity = min(1.0, (sm - opt_max) / opt_max)
+            anomaly_type = "waterlogging"
+
+    confidence = 0.9 if evidence.get("_live_sources", {}).get("soil_available") else 0.6
+
+    # Persist as a full analyzed field: Anomaly + Evidence + Diagnosis + Recommendation
+    persisted_anomaly_id = None
+    try:
+        anomaly = Anomaly(
+            anomaly_id=str(uuid.uuid4()),
+            field_id=field_id,
+            image_id=None,
+            anomaly_type=anomaly_type,
+            severity=round(severity, 2),
+            confidence=confidence,
+            zone="drawn_area",
+            detected_lat=field.boundary_lat,
+            detected_lng=field.boundary_lng,
+        )
+        db.add(anomaly)
+        db.commit()
+        db.refresh(anomaly)
+        persisted_anomaly_id = anomaly.anomaly_id
+
+        # generate_ai_diagnosis adds Evidence + Diagnosis + Recommendation rows
+        generate_ai_diagnosis(anomaly.anomaly_id, field_id, anomaly_type, evidence, db)
+        db.commit()
+    except Exception as e:
+        print(f"[endpoints] Failed to persist drawn-area analysis: {e}")
+        db.rollback()
+
+    return {
+        "field_id": field_id,
+        "anomaly_id": persisted_anomaly_id,
+        "name": field.name,
+        "boundary": {
+            "lat": field.boundary_lat,
+            "lng": field.boundary_lng,
+        },
+        "polygon": get_field_polygon_coords(
+            field.boundary_lat, field.boundary_lng, field_id
+        ),
+        "evidence": evidence,
+        "telemetry": telemetry,
+        "anomaly_summary": {
+            "anomaly_type": anomaly_type,
+            "severity": round(severity, 2),
+            "confidence": confidence,
+            "zone": "drawn_area",
+            "crop_type": field.crop_type,
+        },
+    }
 
 
 # ============================================================================

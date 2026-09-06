@@ -1,3 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+build/
+dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
 # Python
 __pycache__/
 *.py[cod]
@@ -5,23 +19,24 @@ __pycache__/
 *.so
 .Python
 venv/
+.venv/
 ENV/
 env/
-.env
 
 # SQLite Databases
 *.db
 *.sqlite3
 
-# Node / Frontend
-node_modules/
-.next/
-out/
-build/
-dist/
+# Next.js
+next-env.d.ts
+*.tsbuildinfo
 
 # OS / IDE
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+
+# Logs
+*.log
+npm-debug.log*

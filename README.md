@@ -1,392 +1,138 @@
-# Crop Health & Anomaly Agent - Hackathon Starter Pack
+# Crop Health & Anomaly Agent (MCHAA)
 
-Welcome! This is your complete **Ultra-Safe MVP** structure for a 4-day hackathon.
-
----
-
-## 📋 What You Get
-
-This starter pack includes everything you need to build end-to-end in 4 days:
-
-1. **API_CONTRACT.md** — Exact API spec (frontend + backend build against this)
-2. **DATABASE_SCHEMA.sql** — PostgreSQL schema (7 tables, ready to run)
-3. **BACKEND_SKELETON.md** — FastAPI setup + models + endpoints + services
-4. **FRONTEND_SKELETON.md** — React/Next.js setup + components + mock data
-5. **HACKATHON_SPRINT_PLAN.md** — Day-by-day tasks, checkpoints, demo prep
-6. **README.md** — This file
+AI-powered crop health monitoring platform. Upload field images or draw polygons on the map to get instant Gemini-powered diagnosis, severity scoring, and actionable recommendations — with full English/Urdu language support.
 
 ---
 
-## 🚀 Quick Start (Choose Your Role)
+## Features
 
-### **You: System Design / Team Lead**
-
-**Before Day 1:**
-1. Read HACKATHON_SPRINT_PLAN.md (15 min)
-2. Read API_CONTRACT.md (10 min)
-3. Share with team
-4. Create GitHub repo
-5. Add files to repo
-
-**During Hackathon:**
-- Lead standups
-- Verify API contract compliance
-- Unblock backend/frontend when questions arise
-- Rehearse demo
-
-**Time investment:** ~1 hour before, ~2-3 hours during hackathon
+- **Gemini Vision Image Analysis** — upload a photo of your crop and get AI-classified anomaly detection (pest, disease, water stress, etc.) with cause, reasoning, and recommended action
+- **Draw-a-Field** — draw a polygon on the map to define a custom field, auto-registered on Agromonitoring for live soil moisture, NDVI, and weather data
+- **Satellite Data** — real soil moisture, NDVI, and weather data from Open-Meteo and Agromonitoring APIs
+- **AI Diagnosis** — Gemini LLM generates farmer-friendly diagnosis, cause, reasoning, and recommended action tailored to the specific crop type (wheat, rice, cotton, sugarcane)
+- **Voice Alerts** — browser speech synthesis reads the diagnosis aloud (English + Urdu)
+- **English/Urdu Toggle** — full bilingual support with RTL layout
+- **Crop Rotation Advice** — smart non-forcing rotation suggestions based on crop history
 
 ---
 
-### **Frontend Engineer**
+## Tech Stack
 
-**Before Day 1:**
-1. Read FRONTEND_SKELETON.md (20 min)
-2. `npm create-next-app frontend`
-3. Copy component code into your project
-
-**Day 1:**
-- Install dependencies
-- Set `NEXT_PUBLIC_USE_MOCK=true`
-- Copy all mock data + components
-- Build components using mock data
-- **No need to wait for backend**
-
-**Day 2-3:**
-- Switch to real API when backend is ready
-- Integrate with real endpoints
-- Polish styling
-
-**Day 4:**
-- Bug fixes + demo rehearsal
-
-**Time investment:** ~8-10 hours
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16, React 19, Tailwind CSS, Leaflet + leaflet-draw, Recharts |
+| Backend | Python 3.11+, FastAPI, SQLAlchemy, SQLite |
+| AI | Google Gemini (gemini-3.6-flash) for image analysis + LLM diagnosis |
+| Data | Agromonitoring API (soil/NDVI), Open-Meteo API (weather archive) |
+| Voice | Web Speech API (browser-native speech synthesis) |
 
 ---
 
-### **Backend Engineer**
+## Quick Start
 
-**Before Day 1:**
-1. Read BACKEND_SKELETON.md (20 min)
-2. Read DATABASE_SCHEMA.sql (10 min)
-3. Install PostgreSQL locally
+### Backend
 
-**Day 1:**
-- Copy backend skeleton into project
-- Set up virtual environment + install dependencies
-- Create PostgreSQL database
-- Run DATABASE_SCHEMA.sql
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate          # Windows
+pip install -r requirements.txt
 
-**Day 2:**
-- Build FastAPI endpoints
-- Test with mock data
+# Create .env from template and add your keys
+cp .env.example .env
 
-**Day 3:**
-- Integrate Claude API for agent
-- Full end-to-end testing
+uvicorn main:app --reload --port 8000
+```
 
-**Day 4:**
-- Bug fixes + demo rehearsal
+### Frontend
 
-**Time investment:** ~8-10 hours
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
----
+Open [http://localhost:3000](http://localhost:3000).
 
-### **Backend Support / Second Backend**
+### Environment Variables
 
-**Focus areas:**
-- Help backend engineer with setup
-- Database troubleshooting
-- Research Claude API docs
-- Build `services/agent_service.py` (where AI agent logic goes)
-- Test endpoints with Postman
+Copy `backend/.env.example` to `backend/.env` and fill in:
 
-**Time investment:** ~6-8 hours
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GEMINI_API_KEY` | Yes | Google Gemini API key for image analysis + diagnosis |
+| `AGROMONITORING_API_KEY` | No | Agromonitoring API key for live soil/NDVI data (free tier available) |
+| `CLAUDE_API_KEY` | No | Anthropic Claude API key (optional; falls back to Gemini) |
 
 ---
 
-## 📊 Project Structure
+## Project Structure
 
 ```
-project-root/
-├── API_CONTRACT.md              ← Both teams read this
-├── DATABASE_SCHEMA.sql          ← Backend runs this
-├── BACKEND_SKELETON.md          ← Backend follows this
-├── FRONTEND_SKELETON.md         ← Frontend follows this
-├── HACKATHON_SPRINT_PLAN.md     ← Team timeline & tasks
-├── README.md                    ← You are here
-│
-├── backend/
-│   ├── main.py
-│   ├── database.py
-│   ├── models.py
-│   ├── schemas.py
-│   ├── requirements.txt
-│   ├── .env.example
-│   ├── api/
-│   │   └── endpoints.py
-│   └── services/
-│       ├── anomaly_service.py
-│       ├── agent_service.py        ← AI agent with Claude API
-│       └── mock_data.py
-│
-└── frontend/
-    ├── src/
-    │   ├── components/
-    │   │   ├── FarmOverview.jsx
-    │   │   ├── FieldMap.jsx
-    │   │   ├── AnomalyDetailed.jsx
-    │   │   ├── EvidenceCard.jsx
-    │   │   ├── DiagnosisCard.jsx
-    │   │   ├── RecommendationCard.jsx
-    │   │   └── ImageUpload.jsx
-    │   ├── pages/
-    │   │   ├── index.jsx            ← Landing page
-    │   │   ├── field/[fieldId].jsx
-    │   │   └── anomaly/[anomalyId].jsx
-    │   ├── api/
-    │   │   └── api.js               ← Handles mock + real API
-    │   ├── mock/
-    │   │   └── mockData.js          ← Use while backend builds
-    │   └── styles/
-    │       └── globals.css
-    ├── package.json
-    ├── .env.example
-    └── next.config.js
+backend/
+├── main.py                 # FastAPI app, CORS, DB init
+├── database.py             # SQLAlchemy setup (SQLite)
+├── models.py               # ORM models (Field, Anomaly, Diagnosis, etc.)
+├── schemas.py              # Pydantic request/response schemas
+├── api/
+│   └── endpoints.py        # All API routes
+└── services/
+    ├── image_analysis.py   # Gemini Vision + LLM diagnosis
+    ├── agent_service.py    # AI diagnosis orchestration
+    ├── live_data.py        # Agromonitoring + Open-Meteo integration
+    ├── mock_data.py        # Mock data for offline dev
+    └── voice_service.py    # Voice script generation
+
+frontend/
+├── src/
+│   ├── app/                # Next.js App Router pages
+│   │   ├── page.jsx        # Homepage (farm overview + map)
+│   │   ├── field/[fieldId]/page.jsx   # Field detail + drawn-area overlay
+│   │   ├── anomaly/[anomalyId]/page.jsx  # Anomaly detail (satellite + image)
+│   │   └── crops/page.jsx # Crop encyclopedia
+│   ├── components/         # React components
+│   ├── api/api.js          # Axios client + mock guards
+│   ├── context/            # LanguageContext (EN/UR)
+│   ├── i18n/               # en.js, ur.js translation files
+│   └── mock/mockData.js    # Mock data for offline dev
+└── package.json
 ```
 
 ---
 
-## 🔗 How It Works
+## API Endpoints
 
-### The Flow
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/farms/{farm_id}` | Farm with field list |
+| `GET` | `/api/fields/{field_id}` | Field with anomalies |
+| `GET` | `/api/fields/{field_id}/telemetry` | 45-day NDVI/soil/temp/rain history |
+| `POST` | `/api/fields` | Create field from drawn polygon |
+| `POST` | `/api/fields/{field_id}/analyze-area` | Analyze drawn area (live data) |
+| `POST` | `/api/analyze` | Upload image + Gemini analysis |
+| `GET` | `/api/anomalies/{anomaly_id}` | Full anomaly with diagnosis + recommendation |
+| `GET` | `/api/crops` | Crop catalog |
+
+---
+
+## How It Works
 
 ```
-1. Frontend: Upload image
+1. User uploads a crop image or draws a polygon on the map
    ↓
-2. Backend: Receive image_url + field_id
+2. Backend: Gemini Vision classifies the image / fetches live satellite data
    ↓
-3. Backend: Detect anomaly (vision service)
+3. Backend: Creates Anomaly record in DB
    ↓
-4. Backend: Create Anomaly record in DB
+4. Backend: Gemini LLM generates diagnosis (cause, reasoning, action)
    ↓
-5. Backend: Run AI Agent (Claude API)
-   - Agent asks: "What tools do I need?"
-   - Backend provides: soil data, weather, crop history
-   - Claude analyzes and diagnoses
+5. Backend: Stores Diagnosis + Recommendation in DB
    ↓
-6. Backend: Store diagnosis + recommendation in DB
-   ↓
-7. Backend: Return full result to frontend
-   ↓
-8. Frontend: Display analysis (evidence, diagnosis, action)
+6. Frontend: Displays problem + solution with voice alert
 ```
 
-### The Data Flow
-
-```
-Farm → Field → Anomaly → Evidence + Diagnosis + Recommendation
-                            (all stored together in DB)
-```
-
-### The API Contract
-
-**All requests/responses must match exactly:**
-
-```
-POST /api/analyze
-  Request: { image_url, field_id }
-  Response: { anomaly_id, anomaly_type, severity, evidence, diagnosis, recommendation }
-
-GET /api/anomalies/{anomaly_id}
-  Response: { complete anomaly with all details }
-
-GET /api/fields/{field_id}
-  Response: { field info + list of anomalies }
-
-GET /api/farms/{farm_id}
-  Response: { farm info + list of fields }
-```
-
-**See API_CONTRACT.md for complete spec.**
-
 ---
 
-## ⚡ Key Decisions (Ultra-Safe MVP)
+## License
 
-### What's Included
-- ✅ Image upload
-- ✅ Anomaly detection (hardcoded water stress for MVP)
-- ✅ AI agent with tool calling (Claude API)
-- ✅ Diagnosis generation
-- ✅ Recommendation generation
-- ✅ Dashboard display
-- ✅ PostgreSQL storage
-
-### What's NOT Included (v2 features)
-- ❌ Multiple anomaly types (pick one: water_stress)
-- ❌ Heatmap visualization
-- ❌ NDVI calculations
-- ❌ Historical timeline
-- ❌ Real vision model (use mock)
-- ❌ Multi-farm support (hardcode one farm)
-
-**Why?** These cuts reduce scope by 40% while keeping the demo impressive.
-
----
-
-## 📅 Timeline at a Glance
-
-| Day | Morning | Afternoon | Goal |
-|-----|---------|-----------|------|
-| 1 | Setup | Build components | Frontend mock-ready, Backend DB setup |
-| 2 | Endpoints | Integration | Backend returns mock data, Frontend on real API |
-| 3 | Agent logic | Full E2E test | AI diagnoses, complete flow working |
-| 4 | Bug fixes | Demo rehearsal | Polished, confidence high |
-
----
-
-## ✅ Before Day 1 Starts
-
-**Team Lead (You):**
-- [ ] Create GitHub repo
-- [ ] Add all .md files to repo
-- [ ] Share HACKATHON_SPRINT_PLAN.md in team chat
-- [ ] Post API_CONTRACT.md in shared docs
-
-**Backend Engineer:**
-- [ ] Install PostgreSQL
-- [ ] Test: `psql --version` works
-- [ ] Test: Can create new database
-
-**Frontend Engineer:**
-- [ ] Install Node.js 16+
-- [ ] Test: `node --version` works
-- [ ] Test: `npm create-next-app --help` works
-
-**Everyone:**
-- [ ] Read API_CONTRACT.md once
-- [ ] Read your role section in README.md
-- [ ] Ask questions NOW (not during hackathon)
-
----
-
-## 🛠 Tech Stack (Don't Deviate)
-
-**Frontend:**
-- React 18+
-- Next.js 14+
-- Axios (API calls)
-
-**Backend:**
-- Python 3.9+
-- FastAPI
-- SQLAlchemy
-- PostgreSQL 12+
-- Claude API (for AI agent)
-
-**Database:**
-- PostgreSQL (7 tables, schema provided)
-
-**Hosting (Optional):**
-- Frontend: Vercel
-- Backend: Railway / Render / AWS
-
----
-
-## 🚨 Critical Rules
-
-1. **Don't deviate from API contract** — It's your binding agreement
-2. **Use mock data for frontend** — Don't block on backend
-3. **Test integrations early** — Day 2, not Day 4
-4. **No heroics Day 4** — Polish only, no new features
-5. **Document as you go** — Not at the end
-
----
-
-## 💡 Pro Tips
-
-### For Frontend
-- Build with mock data first (NEXT_PUBLIC_USE_MOCK=true)
-- Swap real API when backend is ready
-- Test mobile early (use DevTools)
-- Load spinner = user trust
-
-### For Backend
-- Verify DB schema before writing code
-- Test endpoints with Postman before Frontend touches them
-- Use mock tools for agent (don't call real weather APIs)
-- Error handling matters (bad field_id, missing data, etc.)
-
-### For Everyone
-- Commit to Git every 2 hours (not 1 giant commit at end)
-- Slack standup every 6 hours (5 min, brief updates)
-- Demo to each other mid-Day 3 (catch issues early)
-- Rehearse demo 3 times Day 4 (no surprises)
-
----
-
-## ❓ FAQ
-
-**Q: Do I need to deploy?**  
-A: No. Local setup (localhost) is fine for demo.
-
-**Q: What if backend isn't ready Day 2?**  
-A: Frontend uses NEXT_PUBLIC_USE_MOCK=true, keeps building.
-
-**Q: What if Claude API fails?**  
-A: Use hardcoded diagnosis as fallback (have it ready).
-
-**Q: Can we add more features after the MVP?**  
-A: Yes, if Day 3 goes perfectly. See HACKATHON_SPRINT_PLAN.md for optional features.
-
-**Q: How long is the demo?**  
-A: 5 minutes max. Upload → Analyze → Diagnose → Done.
-
----
-
-## 🎯 Success Criteria (Day 4)
-
-- ✅ Upload image without errors
-- ✅ System detects anomaly and assigns to zone
-- ✅ AI agent investigates (soil, weather, history)
-- ✅ Claude generates diagnosis with confidence score
-- ✅ Dashboard shows evidence + diagnosis + recommendation
-- ✅ Data stored in database
-- ✅ Full demo runs in < 5 minutes
-- ✅ No console errors or warnings
-- ✅ Team confident explaining each part
-
----
-
-## 📞 Support During Hackathon
-
-**Stuck? Try this order:**
-1. Check API_CONTRACT.md (99% of issues are contract mismatches)
-2. Check HACKATHON_SPRINT_PLAN.md for that day's section
-3. Ask team lead (You)
-4. Ask Claude :)
-
----
-
-## 🚀 Next Step
-
-1. **Right now:** Create GitHub repo
-2. **Copy files** into repo (this README + all .md files)
-3. **Share with team** (especially API_CONTRACT.md)
-4. **Each person** reads their role section in README.md
-5. **Day 1 morning:** Everyone runs their setup checklist
-
----
-
-## Final Words
-
-This is a **proven structure** for 4-day hackathons. It's designed to ship a demo, not win a hackathon. Ship > Perfect.
-
-You've got this. 🚜💨
-
----
-
-**Questions? Ask now. Once Day 1 starts, no time for questions.**
-
-Good luck!
+Hackathon project — educational use only.
