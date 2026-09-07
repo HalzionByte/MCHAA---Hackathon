@@ -9,6 +9,12 @@ import { Droplets, CloudRain, Thermometer, Wind, TrendingUp, TrendingDown, Activ
 export default function EvidenceCard({ evidence, fieldId }) {
   const { t } = useLanguage();
   const [sparkData, setSparkData] = useState({});
+  const [latestTelemetry, setLatestTelemetry] = useState(null);
+
+  const safeNum = (val, fallback = '--') => {
+    if (val == null || isNaN(Number(val))) return fallback;
+    return Number(Number(val).toFixed(1));
+  };
 
   const metricConfigs = [
     { label: t('evidence.soilMoisture'), unit: '%', key: 'soil_moisture', color: 'var(--cyan)', Icon: Droplets },
@@ -17,20 +23,24 @@ export default function EvidenceCard({ evidence, fieldId }) {
     { label: t('evidence.humidity'), unit: '%', key: 'humidity', color: 'var(--cyan)', Icon: Wind },
   ];
 
+  const ndviRaw = evidence.vegetation_ndvi_change;
+  const ndviSafe = safeNum(ndviRaw);
+
   const ndviConfig = {
     label: t('evidence.ndviChange'),
-    value: `${evidence.vegetation_ndvi_change > 0 ? '+' : ''}${evidence.vegetation_ndvi_change}`,
+    value: ndviSafe === '--' ? '--' : `${ndviSafe > 0 ? '+' : ''}${ndviSafe}`,
     unit: 'NDVI',
     key: 'ndvi',
-    color: evidence.vegetation_ndvi_change >= 0 ? 'var(--emerald)' : 'var(--crimson)',
-    Icon: evidence.vegetation_ndvi_change >= 0 ? TrendingUp : TrendingDown,
+    color: ndviRaw != null && ndviRaw >= 0 ? 'var(--emerald)' : 'var(--crimson)',
+    Icon: ndviRaw != null && ndviRaw >= 0 ? TrendingUp : TrendingDown,
   };
 
+  const t_ = latestTelemetry;
   const metrics = [
-    { ...metricConfigs[0], value: `${evidence.soil_moisture_percent}%` },
-    { ...metricConfigs[1], value: `${evidence.rainfall_7d_mm} mm` },
-    { ...metricConfigs[2], value: `${evidence.temperature_c}°C` },
-    { ...metricConfigs[3], value: `${evidence.humidity_percent}%` },
+    { ...metricConfigs[0], value: `${safeNum(t_?.soil_moisture ?? evidence.soil_moisture_percent)}%` },
+    { ...metricConfigs[1], value: `${safeNum(t_?.rainfall ?? evidence.rainfall_7d_mm)} mm` },
+    { ...metricConfigs[2], value: `${safeNum(t_?.temperature ?? evidence.temperature_c)}°C` },
+    { ...metricConfigs[3], value: `${safeNum(t_?.humidity ?? evidence.humidity_percent)}%` },
     ndviConfig,
   ];
 
@@ -46,6 +56,7 @@ export default function EvidenceCard({ evidence, fieldId }) {
           data[key] = history.map(d => d[key]);
         }
         setSparkData(data);
+        setLatestTelemetry(history[history.length - 1]);
       }
     }
     load();

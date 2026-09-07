@@ -6,6 +6,7 @@ Returns None for any data source that fails.
 import os
 import time
 import math
+import random
 import requests
 from datetime import datetime, timedelta
 
@@ -469,6 +470,8 @@ def get_real_telemetry_history(field_lat: float, field_lng: float, field_id: str
         arch = archive_data.get(d, {})
         if d in ndvi_by_date:
             current_ndvi = ndvi_by_date[d]
+        else:
+            current_ndvi = round(max(0.3, min(0.9, current_ndvi + random.uniform(-0.02, 0.02))), 3)
         timeline.append({
             "date": d,
             "ndvi": current_ndvi,

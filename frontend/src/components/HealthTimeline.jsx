@@ -39,7 +39,7 @@ function CustomTooltip({ active, payload, label, formattedHistory, statusConfig 
             <span className="text-[var(--text-muted)]">{p.name}</span>
           </span>
           <span className="font-semibold text-[var(--text-primary)] tabular-nums">
-            {typeof p.value === 'number' ? p.value.toFixed(2) : p.value}
+            {typeof p.value === 'number' ? p.value.toFixed(1) : p.value}
           </span>
         </div>
       ))}
@@ -182,7 +182,7 @@ export default function HealthTimeline({ fieldId }) {
                   <span className="font-medium">{config.label} {config.unit && `(${config.unit})`}</span>
                 </div>
                 <span className="text-xs text-muted">
-                  {t('timeline.range', { min: Math.min(...data.map(d => d.value)).toFixed(2), max: Math.max(...data.map(d => d.value)).toFixed(2), unit: config.unit })}
+                  {t('timeline.range', { min: Math.min(...data.map(d => d.value)).toFixed(1), max: Math.max(...data.map(d => d.value)).toFixed(1), unit: config.unit })}
                 </span>
               </div>
               <div className="h-48">
@@ -221,7 +221,7 @@ export default function HealthTimeline({ fieldId }) {
                       fill={`url(#gradient-${metricKey})`}
                       connectNulls
                     />
-                    <ReferenceLine y={data.reduce((sum, d) => sum + d.value, 0) / data.length} stroke="var(--text-muted)" strokeDasharray="4 4" label={{ position: 'right', fill: 'var(--text-muted)', formatter: v => t('timeline.avg', { value: v.toFixed(2) }) }} />
+                    <ReferenceLine y={data.reduce((sum, d) => sum + d.value, 0) / data.length} stroke="var(--text-muted)" strokeDasharray="4 4"                     label={{ position: 'right', fill: 'var(--text-muted)', formatter: v => t('timeline.avg', { value: v.toFixed(1) }) }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
