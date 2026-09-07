@@ -95,7 +95,11 @@ async def analyze_image(request: AnalyzeRequestSchema, db: Session = Depends(get
         "zone": "uploaded_image",
     }
 
-    # 4. Create Anomaly record — all fields from Gemini's vision output
+    # 4. If healthy, skip anomaly creation and return healthy status
+    if vision_result["anomaly_type"] == "healthy":
+        return {"status": "healthy", "message": "No anomaly detected", "anomaly_id": None}
+
+    # 5. Create Anomaly record — only when a real problem is detected
     anomaly = Anomaly(
         anomaly_id=str(uuid.uuid4()),
         field_id=request.field_id,
@@ -111,7 +115,7 @@ async def analyze_image(request: AnalyzeRequestSchema, db: Session = Depends(get
     db.commit()
     db.refresh(anomaly)
 
-    # 5. Persist Diagnosis + Recommendation
+    # 6. Persist Diagnosis + Recommendation
     try:
         generate_ai_diagnosis(
             anomaly.anomaly_id, request.field_id,
@@ -195,7 +199,7 @@ async def get_field(field_id: str, db: Session = Depends(get_db)):
                 "zone": a.zone,
                 "created_at": a.created_at.isoformat() if a.created_at else None
             }
-            for a in field.anomalies
+            for a in field.anomalies if a.anomaly_type != "healthy"
         ]
     }
 
@@ -232,8 +236,8 @@ async def get_farm(farm_id: str, db: Session = Depends(get_db)):
                 "field_id": f.field_id,
                 "name": f.name,
                 "crop_type": f.crop_type,
-                "status": "alert" if f.anomalies else "healthy",
-                "anomaly_count": len(f.anomalies),
+                "status": "alert" if [a for a in f.anomalies if a.anomaly_type != "healthy"] else "healthy",
+                "anomaly_count": len([a for a in f.anomalies if a.anomaly_type != "healthy"]),
                 "anomalies": [
                     {
                         "anomaly_id": a.anomaly_id,
@@ -242,7 +246,7 @@ async def get_farm(farm_id: str, db: Session = Depends(get_db)):
                         "zone": a.zone,
                         "created_at": a.created_at.isoformat() if a.created_at else None,
                     }
-                    for a in f.anomalies
+                    for a in f.anomalies if a.anomaly_type != "healthy"
                 ],
                 "last_analyzed": f.updated_at.isoformat() if f.updated_at else None
             }
@@ -576,53 +580,29 @@ async def analyze_drawn_area(
 
     confidence = 0.9 if evidence.get("_live_sources", {}).get("soil_available") else 0.6
 
-    # Persist as a full analyzed field: Anomaly + Evidence + Diagnosis + Recommendation
-    persisted_anomaly_id = None
-    try:
-        anomaly = Anomaly(
-            anomaly_id=str(uuid.uuid4()),
-            field_id=field_id,
-            image_id=None,
-            anomaly_type=anomaly_type,
-            severity=round(severity, 2),
-            confidence=confidence,
-            zone="drawn_area",
-            detected_lat=field.boundary_lat,
-            detected_lng=field.boundary_lng,
-        )
-        db.add(anomaly)
-        db.commit()
-        db.refresh(anomaly)
-        persisted_anomaly_id = anomaly.anomaly_id
-
-        # generate_ai_diagnosis adds Evidence + Diagnosis + Recommendation rows
-        generate_ai_diagnosis(anomaly.anomaly_id, field_id, anomaly_type, evidence, db)
-        db.commit()
-    except Exception as e:
-        print(f"[endpoints] Failed to persist drawn-area analysis: {e}")
-        db.rollback()
-
-    return {
-        "field_id": field_id,
-        "anomaly_id": persisted_anomaly_id,
-        "name": field.name,
-        "boundary": {
-            "lat": field.boundary_lat,
-            "lng": field.boundary_lng,
-        },
-        "polygon": get_field_polygon_coords(
-            field.boundary_lat, field.boundary_lng, field_id
-        ),
-        "evidence": evidence,
-        "telemetry": telemetry,
-        "anomaly_summary": {
-            "anomaly_type": anomaly_type,
-            "severity": round(severity, 2),
-            "confidence": confidence,
-            "zone": "drawn_area",
-            "crop_type": field.crop_type,
-        },
-    }
+    # If healthy, skip anomaly creation and return healthy status directly
+    if anomaly_type == "healthy":
+        return {
+            "field_id": field_id,
+            "anomaly_id": None,
+            "name": field.name,
+            "boundary": {
+                "lat": field.boundary_lat,
+                "lng": field.boundary_lng,
+            },
+            "polygon": get_field_polygon_coords(
+                field.boundary_lat, field.boundary_lng, field_id
+            ),
+            "evidence": evidence,
+            "telemetry": telemetry,
+            "anomaly_summary": {
+                "anomaly_type": anomaly_type,
+                "severity": round(severity, 2),
+                "confidence": confidence,
+                "zone": "drawn_area",
+                "crop_type": field.crop_type,
+            },
+        }
 
 
 # ============================================================================

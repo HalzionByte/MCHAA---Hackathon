@@ -113,7 +113,7 @@ export default function FieldPage() {
         // Ignore if a newer load has started (stale fieldId)
         if (id !== loadIdRef.current) return;
         setField(fieldData);
-        if (fieldData?.anomalies?.length) {
+        if (fieldData?.anomalies?.filter(a => a.anomaly_type !== 'healthy')?.length) {
           const anomalyData = await getAnomaly(fieldData.anomalies[0].anomaly_id);
           if (id === loadIdRef.current) setAnomaly(anomalyData);
         }

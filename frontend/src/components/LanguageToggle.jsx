@@ -25,7 +25,7 @@ export default function LanguageToggle() {
           color: lang === 'ur' ? 'var(--bg-main)' : 'var(--text-muted)',
         }}
       >
-        فارسی
+        اردو
       </button>
     </div>
   );
