@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { getFarm, deleteField } from '../api/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MapPin, AlertTriangle, Upload, CheckCircle2, Leaf, Sprout, Trash2 } from 'lucide-react';
+import { MapPin, AlertTriangle, Upload, CheckCircle2, Leaf, Sprout, Trash2, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AnalysisFlow from './AnalysisFlow';
 import AudioAlertPlayer from './AudioAlertPlayer';
@@ -175,6 +175,8 @@ export default function FarmOverview({ farmId }) {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [cropFilter, setCropFilter] = useState(null);
+  const [healthFilter, setHealthFilter] = useState(null);
 
   useEffect(() => {
     async function loadFarm() {
@@ -190,21 +192,38 @@ export default function FarmOverview({ farmId }) {
     loadFarm();
   }, [farmId]);
 
-  const hasActiveAlert = useMemo(() => {
-    if (!farm?.fields) return false;
-    return farm.fields.some(f => f.status === 'alert');
+  const uniqueCrops = useMemo(() => {
+    if (!farm?.fields) return [];
+    const seen = new Set();
+    return farm.fields.filter(f => {
+      if (seen.has(f.crop_type)) return false;
+      seen.add(f.crop_type);
+      return true;
+    });
   }, [farm]);
 
+  const filteredFields = useMemo(() => {
+    if (!farm?.fields) return [];
+    return farm.fields.filter(f => {
+      if (cropFilter && f.crop_type !== cropFilter) return false;
+      if (healthFilter && f.status !== healthFilter) return false;
+      return true;
+    });
+  }, [farm, cropFilter, healthFilter]);
+
+  const hasActiveAlert = useMemo(() => {
+    return filteredFields.some(f => f.status === 'alert');
+  }, [filteredFields]);
+
   const homeSummary = useMemo(() => {
-    if (!farm?.fields) return '';
-    const alertFields = farm.fields.filter(f => f.status === 'alert');
+    const alertFields = filteredFields.filter(f => f.status === 'alert');
     if (!alertFields.length) return '';
     const lines = alertFields.map(f => {
       const count = f.anomaly_count;
       return `Field ${f.name} has ${count} ${count === 1 ? 'issue' : 'issues'}.`;
     });
     return lines.join(' ');
-  }, [farm]);
+  }, [filteredFields]);
 
   const handleDeleteRequest = (field) => {
     setDeleteTarget(field);
@@ -286,11 +305,69 @@ export default function FarmOverview({ farmId }) {
       {/* Field Cards Grid */}
       <div>
         <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-4">{t('farm.yourFields')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {farm.fields.map((field) => (
-            <FieldCard key={field.field_id} field={field} onDelete={handleDeleteRequest} />
-          ))}
-        </div>
+
+        {/* Health Status Filter */}
+        {farm.fields.length > 1 && (
+          <div className="flex items-center gap-2 flex-wrap mb-3">
+            <Filter className="w-4 h-4 text-[var(--text-muted)]" />
+            <button
+              onClick={() => setHealthFilter(null)}
+              className={`map-chip ${healthFilter === null ? 'map-chip-active' : ''}`}
+            >
+              {t('farm.allStatus')}
+            </button>
+            <button
+              onClick={() => setHealthFilter('healthy')}
+              className={`map-chip ${healthFilter === 'healthy' ? 'map-chip-active' : ''}`}
+            >
+              <span className="w-2 h-2 rounded-full bg-[var(--emerald)]" />
+              {t('farm.healthyFilter')}
+            </button>
+            <button
+              onClick={() => setHealthFilter('alert')}
+              className={`map-chip ${healthFilter === 'alert' ? 'map-chip-active' : ''}`}
+            >
+              <span className="w-2 h-2 rounded-full bg-[var(--crimson)]" />
+              {t('farm.issueFilter')}
+            </button>
+          </div>
+        )}
+
+        {/* Crop Type Filter */}
+        {uniqueCrops.length > 1 && (
+          <div className="flex items-center gap-2 flex-wrap mb-4">
+            <button
+              onClick={() => setCropFilter(null)}
+              className={`map-chip ${cropFilter === null ? 'map-chip-active' : ''}`}
+            >
+              {t('farm.allCrops')}
+            </button>
+            {uniqueCrops.map(f => (
+              <button
+                key={f.crop_type}
+                onClick={() => setCropFilter(cropFilter === f.crop_type ? null : f.crop_type)}
+                className={`map-chip ${cropFilter === f.crop_type ? 'map-chip-active' : ''}`}
+              >
+                <span className="text-base">{cropEmojis[f.crop_type] || '🌱'}</span>
+                {cropNameKeys[f.crop_type] ? t(cropNameKeys[f.crop_type]) : f.crop_type}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Filtered Field Cards */}
+        {filteredFields.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {filteredFields.map((field) => (
+              <FieldCard key={field.field_id} field={field} onDelete={handleDeleteRequest} />
+            ))}
+          </div>
+        ) : (
+          <div className="glass-card p-8 text-center text-[var(--text-muted)]">
+            <Filter className="w-8 h-8 mx-auto mb-3 opacity-50" />
+            {t('farm.noMatchingFields')}
+          </div>
+        )}
       </div>
 
       {/* Giant Upload Button */}

@@ -6,6 +6,11 @@ export default {
   "farm.uploadImage": "📸 Upload Image",
   "farm.systemActive": "System Active",
   "farm.cropGuide": "Crop Guide",
+  "farm.allCrops": "All Crops",
+  "farm.allStatus": "All",
+  "farm.healthyFilter": "Healthy",
+  "farm.issueFilter": "Issues",
+  "farm.noMatchingFields": "No fields match your filters",
 
   // Status
   "status.healthy": "Healthy",

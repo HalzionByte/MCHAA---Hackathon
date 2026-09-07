@@ -6,6 +6,11 @@ export default {
   "farm.uploadImage": "📸 تصویر اپلوڈ کریں",
   "farm.systemActive": "سسٹم فعال ہے",
   "farm.cropGuide": "فصل کی رہنمائی",
+  "farm.allCrops": "تمام فصلیں",
+  "farm.allStatus": "سب",
+  "farm.healthyFilter": "صحت مند",
+  "farm.issueFilter": "مسائل",
+  "farm.noMatchingFields": "آپ کے فلٹرز سے کوئی کھیت مماثل نہیں",
 
   // Status
   "status.healthy": "صحت مند",
