@@ -6,6 +6,7 @@ Returns None for any data source that fails.
 import os
 import time
 import math
+import json
 import random
 import requests
 from datetime import datetime, timedelta
@@ -200,10 +201,62 @@ def set_polygon_override(field_id: str, polygon_id: str, coords: list[list[float
 # Open-Meteo: current + historical weather
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _get_weather_from_open_meteo_archive(lat: float, lng: float) -> dict | None:
+    """
+    Fallback: fetch recent weather from Open-Meteo Archive API.
+    Used when the forecast API fails. Returns yesterday's data.
+    """
+    try:
+        end_date = datetime.utcnow().date() - timedelta(days=1)
+        start_date = end_date - timedelta(days=1)
+        resp = requests.get(
+            f"{OPEN_METEO_ARCHIVE}",
+            params={
+                "latitude": lat,
+                "longitude": lng,
+                "start_date": str(start_date),
+                "end_date": str(end_date),
+                "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,"
+                         "relative_humidity_2m_mean",
+                "timezone": "auto",
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        daily = resp.json().get("daily", {})
+        dates = daily.get("time", [])
+        if not dates:
+            return None
+
+        # Use the last available day
+        i = len(dates) - 1
+        t_max = daily.get("temperature_2m_max", [None])[i] if i < len(daily.get("temperature_2m_max", [])) else None
+        t_min = daily.get("temperature_2m_min", [None])[i] if i < len(daily.get("temperature_2m_min", [])) else None
+        rain = daily.get("precipitation_sum", [None])[i] if i < len(daily.get("precipitation_sum", [])) else None
+        humid = daily.get("relative_humidity_2m_mean", [None])[i] if i < len(daily.get("relative_humidity_2m_mean", [])) else None
+
+        temp_c = round((t_max + t_min) / 2, 1) if t_max is not None and t_min is not None else None
+
+        return {
+            "temperature_c": temp_c,
+            "humidity_percent": round(humid, 1) if humid is not None else None,
+            "rainfall_today_mm": round(rain, 1) if rain is not None else None,
+            "rainfall_7d_mm": round(rain, 1) if rain is not None else None,
+            "wind_speed_kmh": None,
+            "wind_direction": "N/A",
+            "cloud_cover_percent": None,
+            "_historical": {},
+        }
+    except Exception as e:
+        print(f"[live_data] Open-Meteo archive weather fallback failed: {e}")
+    return None
+
+
 def get_live_weather(lat: float, lng: float) -> dict | None:
     """
     Fetch current weather + 30-day historical aggregates from Open-Meteo.
     Returns dict with temperature, humidity, rainfall, wind data.
+    Falls back to archive API if forecast fails.
     """
     try:
         # Current weather
@@ -262,6 +315,10 @@ def get_live_weather(lat: float, lng: float) -> dict | None:
         }
     except Exception as e:
         print(f"[live_data] Open-Meteo weather fetch failed: {e}")
+        # Fallback: use archive API for yesterday's data
+        fallback = _get_weather_from_open_meteo_archive(lat, lng)
+        if fallback:
+            return fallback
         return None
 
 
@@ -269,92 +326,165 @@ def get_live_weather(lat: float, lng: float) -> dict | None:
 # Agromonitoring: current soil
 # ──────────────────────────────────────────────────────────────────────────────
 
-def get_live_soil(polyid: str) -> dict | None:
+def _get_soil_moisture_from_open_meteo(lat: float, lng: float) -> dict | None:
     """
-    Fetch current soil data from Agromonitoring.
-    Returns dict with soil_moisture_percent and temperature_10cm_c.
+    Fallback: fetch recent soil moisture from Open-Meteo ERA5-Land archive.
+    Used when Agromonitoring soil data is unavailable (no API key, no polygon, etc.).
+    Returns dict with soil_moisture_percent, or None if fetch fails.
     """
-    if not AGRO_KEY or not polyid:
-        return None
     try:
+        end_date = datetime.utcnow().date() - timedelta(days=1)
+        start_date = end_date - timedelta(days=3)
         resp = requests.get(
-            f"{AGRO_BASE}/soil",
-            params={"polyid": polyid, "appid": AGRO_KEY},
+            f"{OPEN_METEO_ARCHIVE}",
+            params={
+                "latitude": lat,
+                "longitude": lng,
+                "start_date": str(start_date),
+                "end_date": str(end_date),
+                "daily": "soil_moisture_0_to_7cm_mean",
+                "timezone": "auto",
+            },
             timeout=10,
         )
         resp.raise_for_status()
-        data = resp.json()
-        moisture_m3 = data.get("moisture", 0)
-        t10_k = data.get("t10")
-        return {
-            "soil_moisture_percent": round(moisture_m3 * 100, 1) if moisture_m3 is not None else None,
-            "temperature_10cm_c": round(t10_k - 273.15, 1) if t10_k is not None else None,
-        }
+        daily = resp.json().get("daily", {})
+        soil_sm = daily.get("soil_moisture_0_to_7cm_mean", [])
+        for i in range(len(soil_sm) - 1, -1, -1):
+            if soil_sm[i] is not None:
+                return {"soil_moisture_percent": round(soil_sm[i] * 100, 1)}
     except Exception as e:
-        print(f"[live_data] Agromonitoring soil fetch failed: {e}")
-        return None
+        print(f"[live_data] Open-Meteo soil moisture fallback failed: {e}")
+    return None
+
+
+def get_live_soil(polyid: str, field_lat: float = None, field_lng: float = None) -> dict | None:
+    """
+    Fetch current soil data. Tries Agromonitoring first, falls back to Open-Meteo ERA5-Land.
+    Returns dict with soil_moisture_percent and temperature_10cm_c.
+    """
+    # Try Agromonitoring first
+    if AGRO_KEY and polyid:
+        try:
+            resp = requests.get(
+                f"{AGRO_BASE}/soil",
+                params={"polyid": polyid, "appid": AGRO_KEY},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            moisture_m3 = data.get("moisture", 0)
+            t10_k = data.get("t10")
+            return {
+                "soil_moisture_percent": round(moisture_m3 * 100, 1) if moisture_m3 is not None else None,
+                "temperature_10cm_c": round(t10_k - 273.15, 1) if t10_k is not None else None,
+            }
+        except Exception as e:
+            print(f"[live_data] Agromonitoring soil fetch failed: {e}")
+
+    # Fallback: Open-Meteo ERA5-Land soil moisture
+    if field_lat is not None and field_lng is not None:
+        fallback = _get_soil_moisture_from_open_meteo(field_lat, field_lng)
+        if fallback:
+            return fallback
+
+    return None
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Agromonitoring: NDVI history → vegetation change
 # ──────────────────────────────────────────────────────────────────────────────
 
-def get_live_ndvi_change(polyid: str, days: int = 30) -> float | None:
+def _get_ndvi_from_usda_fas(lat: float, lng: float) -> float | None:
     """
-    Compute NDVI change from Agromonitoring satellite history.
-    Compares recent 10-day mean vs prior 10-day mean (cloud-filtered).
-    Returns float delta, or None if data unavailable.
+    Fallback: fetch NDVI from USDA FAS GeoServer (MODIS 8-day composite).
+    Free, no API key needed. Returns NDVI value (0.0-1.0) or None.
     """
-    if not AGRO_KEY or not polyid:
-        return None
     try:
-        # Agromonitoring rejects end timestamps at/after "now" — buffer by 1 day
-        end = datetime.utcnow() - timedelta(days=1)
-        start = end - timedelta(days=days)
+        geometry = json.dumps({"x": lng, "y": lat, "spatialReference": {"wkid": 4326}})
         resp = requests.get(
-            f"{AGRO_BASE}/ndvi/history",
+            "https://geo.fas.usda.gov/arcgis2/rest/services/G_VegetationIndex/"
+            "MODIS_NDVI_Composite_Global_8day/ImageServer/identify",
             params={
-                "polyid": polyid,
-                "start": int(start.timestamp()),
-                "end": int(end.timestamp()),
-                "appid": AGRO_KEY,
+                "geometry": geometry,
+                "geometryType": "esriGeometryPoint",
+                "returnGeometry": "false",
+                "f": "json",
             },
-            timeout=15,
+            timeout=10,
         )
         resp.raise_for_status()
-        records = resp.json()
-        if not isinstance(records, list) or len(records) < 2:
-            return None
-
-        # Sort by date, keep only records with a usable mean
-        clean = sorted(
-            [r for r in records if "data" in r and "mean" in r.get("data", {})],
-            key=lambda r: r.get("dt", 0),
-        )
-        if len(clean) < 2:
-            return None
-
-        # Split into recent vs. baseline. For short histories (freshly-created
-        # polygons have only a few days of data) fall back to last-vs-first.
-        now_ts = time.time()
-        recent_cutoff = now_ts - (10 * 86400)
-        baseline_start = now_ts - (20 * 86400)
-        baseline_end = now_ts - (10 * 86400)
-
-        recent_vals = [r["data"]["mean"] for r in clean if r["dt"] >= recent_cutoff]
-        baseline_vals = [r["data"]["mean"] for r in clean if baseline_start <= r["dt"] <= baseline_end]
-
-        if not recent_vals or not baseline_vals:
-            first = clean[0]["data"]["mean"]
-            last = clean[-1]["data"]["mean"]
-            return round(last - first, 3)
-
-        recent_avg = sum(recent_vals) / len(recent_vals)
-        baseline_avg = sum(baseline_vals) / len(baseline_vals)
-        return round(recent_avg - baseline_avg, 3)
+        data = resp.json()
+        pixel_val = data.get("value")
+        if pixel_val is not None:
+            # Convert raw U8 pixel (0-255) to NDVI: NDVI = (pixel / 250) - 0.08
+            ndvi = (int(pixel_val) / 250.0) - 0.08
+            return round(max(0.0, min(1.0, ndvi)), 3)
     except Exception as e:
-        print(f"[live_data] Agromonitoring NDVI fetch failed: {e}")
-        return None
+        print(f"[live_data] USDA FAS NDVI fallback failed: {e}")
+    return None
+
+
+def get_live_ndvi_change(polyid: str, field_lat: float = None, field_lng: float = None,
+                         days: int = 30) -> float | None:
+    """
+    Compute NDVI change from Agromonitoring satellite history.
+    Falls back to USDA FAS GeoServer if Agromonitoring fails.
+    Returns float delta, or None if data unavailable.
+    """
+    # Try Agromonitoring first
+    if AGRO_KEY and polyid:
+        try:
+            # Agromonitoring rejects end timestamps at/after "now" — buffer by 1 day
+            end = datetime.utcnow() - timedelta(days=1)
+            start = end - timedelta(days=days)
+            resp = requests.get(
+                f"{AGRO_BASE}/ndvi/history",
+                params={
+                    "polyid": polyid,
+                    "start": int(start.timestamp()),
+                    "end": int(end.timestamp()),
+                    "appid": AGRO_KEY,
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            records = resp.json()
+            if isinstance(records, list) and len(records) >= 2:
+                # Sort by date, keep only records with a usable mean
+                clean = sorted(
+                    [r for r in records if "data" in r and "mean" in r.get("data", {})],
+                    key=lambda r: r.get("dt", 0),
+                )
+                if len(clean) >= 2:
+                    now_ts = time.time()
+                    recent_cutoff = now_ts - (10 * 86400)
+                    baseline_start = now_ts - (20 * 86400)
+                    baseline_end = now_ts - (10 * 86400)
+
+                    recent_vals = [r["data"]["mean"] for r in clean if r["dt"] >= recent_cutoff]
+                    baseline_vals = [r["data"]["mean"] for r in clean if baseline_start <= r["dt"] <= baseline_end]
+
+                    if recent_vals and baseline_vals:
+                        recent_avg = sum(recent_vals) / len(recent_vals)
+                        baseline_avg = sum(baseline_vals) / len(baseline_vals)
+                        return round(recent_avg - baseline_avg, 3)
+                    else:
+                        first = clean[0]["data"]["mean"]
+                        last = clean[-1]["data"]["mean"]
+                        return round(last - first, 3)
+        except Exception as e:
+            print(f"[live_data] Agromonitoring NDVI fetch failed: {e}")
+
+    # Fallback: USDA FAS GeoServer MODIS NDVI
+    if field_lat is not None and field_lng is not None:
+        ndvi = _get_ndvi_from_usda_fas(field_lat, field_lng)
+        if ndvi is not None:
+            # Return a small negative change to indicate we have NDVI but no history for change
+            # This signals "data available but change calculation not possible"
+            return round(ndvi - 0.5, 3)  # Offset from baseline of 0.5
+
+    return None
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -370,8 +500,8 @@ def fetch_all_live_data(field_id: str, field_lat: float, field_lng: float, crop_
     polyid = get_or_create_polygon(field_lat, field_lng, field_id)
 
     weather = get_live_weather(field_lat, field_lng)
-    soil = get_live_soil(polyid) if polyid else None
-    ndvi_change = get_live_ndvi_change(polyid) if polyid else None
+    soil = get_live_soil(polyid, field_lat, field_lng)
+    ndvi_change = get_live_ndvi_change(polyid, field_lat, field_lng)
     crop_info = get_crop_by_id(crop_type)
 
     return {

@@ -133,7 +133,7 @@ export default {
   "crop.days": "{{days}} days",
 
   // Health Timeline
-  "timeline.title": "Health Timeline (Last 45 Days)",
+  "timeline.title": "Health Timeline (Last few Days)",
   "timeline.loading": "Loading health history...",
   "timeline.noData": "No historical data available",
   "timeline.selectMetrics": "Select at least one metric to display charts",
@@ -158,7 +158,6 @@ export default {
   "map.moderate": "Moderate",
   "map.low": "Low",
   "map.heatmapIntensity": "Heatmap Intensity",
-  "map.anomalyDetected": "{{count}} anomaly detected",
   "map.zone": "Zone {{zone}}",
   "map.type": "Type: {{type}}",
   "map.severityLabel": "Severity: {{severity}}",

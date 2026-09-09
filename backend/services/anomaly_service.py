@@ -94,8 +94,7 @@ def _make_anomaly(anomaly_type, severity, confidence, zone, lat, lng):
 def generate_ndvi_change(field_id: str, field_lat: float, field_lng: float, crop_type: str) -> float:
     """Calculate real NDVI change from satellite history. Returns None if unavailable."""
     polyid = get_or_create_polygon(field_lat, field_lng, field_id)
-    if polyid:
-        change = get_live_ndvi_change(polyid)
-        if change is not None:
-            return change
+    change = get_live_ndvi_change(polyid, field_lat, field_lng)
+    if change is not None:
+        return change
     return None

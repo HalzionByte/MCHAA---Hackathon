@@ -9,7 +9,7 @@ from services.live_data import (
     get_live_ndvi_change,
     get_or_create_polygon,
 )
-from services.image_analysis import diagnose_with_gemini
+from services.image_analysis import diagnose_with_gemini, diagnose_sensors_with_gemini
 from models import Diagnosis, Evidence, Recommendation, Anomaly
 from sqlalchemy.orm import Session
 import uuid
@@ -85,10 +85,9 @@ def execute_tool(tool_name: str, tool_input: dict) -> dict:
     polyid = ctx.get("polyid")
 
     if tool_name == "get_soil_data":
-        if polyid:
-            live = get_live_soil(polyid)
-            if live is not None:
-                return live
+        live = get_live_soil(polyid, lat, lng)
+        if live is not None:
+            return live
         return None
 
     elif tool_name == "get_weather_data":
@@ -212,17 +211,13 @@ Please investigate this anomaly by:
 
 
 def generate_ai_diagnosis(anomaly_id: str, field_id: str, anomaly_type: str, evidence_data: dict, db: Session):
-    """Generate AI-written diagnosis + recommendation using Gemini, then persist to DB."""
-    # Build the vision_result dict expected by diagnose_with_gemini
-    vision_result = {
-        "anomaly_type": anomaly_type,
-        "severity": evidence_data.get("severity", 0.5),
-        "confidence": evidence_data.get("confidence", 0.7),
-        "description": evidence_data.get("image_description", evidence_data.get("description", "No description.")),
-        "detected_pests": evidence_data.get("detected_pests", []),
-        "recommended_actions": evidence_data.get("recommended_actions", []),
-    }
+    """Generate AI-written diagnosis + recommendation using Gemini, then persist to DB.
 
+    When evidence_data contains sensor readings (soil_moisture_percent, temperature_c, etc.),
+    uses the sensor-aware Gemini prompt that evaluates conditions against crop requirements.
+    Otherwise falls back to the image-based diagnosis prompt.
+    """
+    # Resolve crop_type
     crop_type = evidence_data.get("crop_type")
     if not crop_type:
         try:
@@ -234,15 +229,40 @@ def generate_ai_diagnosis(anomaly_id: str, field_id: str, anomaly_type: str, evi
             print(f"[agent_service] Failed to resolve crop_type: {e}")
     if not crop_type:
         crop_type = "wheat"
-    diag = diagnose_with_gemini(vision_result, crop_type)
 
-    # Extract a clean first sentence for probable_cause
-    cause = diag["cause"]
-    confidence = diag["confidence"]
-    reasoning = diag["reasoning"]
-    action_key = diag["action_key"]
-    action_summary = diag["action_summary"]
-    priority = diag["priority"]
+    # Check if we have sensor readings — use sensor-aware diagnosis
+    has_sensor_data = any(
+        evidence_data.get(k) is not None
+        for k in ("soil_moisture_percent", "temperature_c", "humidity_percent", "rainfall_7d_mm")
+    )
+
+    if has_sensor_data:
+        from services.mock_data import get_crop_by_id
+        crop_info = get_crop_by_id(crop_type)
+        diag = diagnose_sensors_with_gemini(evidence_data, crop_type, crop_info)
+        cause = diag["cause"]
+        confidence = diag["confidence"]
+        reasoning = diag["reasoning"]
+        action_key = diag["action_key"]
+        action_summary = diag["action_summary"]
+        priority = diag["priority"]
+    else:
+        # Image-based path — build vision_result dict expected by diagnose_with_gemini
+        vision_result = {
+            "anomaly_type": anomaly_type,
+            "severity": evidence_data.get("severity", 0.5),
+            "confidence": evidence_data.get("confidence", 0.7),
+            "description": evidence_data.get("image_description", evidence_data.get("description", "No description.")),
+            "detected_pests": evidence_data.get("detected_pests", []),
+            "recommended_actions": evidence_data.get("recommended_actions", []),
+        }
+        diag = diagnose_with_gemini(vision_result, crop_type)
+        cause = diag["cause"]
+        confidence = diag["confidence"]
+        reasoning = diag["reasoning"]
+        action_key = diag["action_key"]
+        action_summary = diag["action_summary"]
+        priority = diag["priority"]
 
     store_diagnosis_and_recommendation(
         anomaly_id, field_id, cause, evidence_data, db,

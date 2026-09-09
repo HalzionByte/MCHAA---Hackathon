@@ -199,7 +199,7 @@ async def get_field(field_id: str, db: Session = Depends(get_db)):
                 "zone": a.zone,
                 "created_at": a.created_at.isoformat() if a.created_at else None
             }
-            for a in field.anomalies if a.anomaly_type != "healthy"
+            for a in field.anomalies if a.anomaly_type != "healthy" and a.image_id is None
         ]
     }
 
@@ -539,13 +539,25 @@ async def analyze_drawn_area(
         )
 
     # Fetch evidence from live sources
-    evidence = build_evidence_from_live(
-        field_id=field_id,
-        field_lat=field.boundary_lat,
-        field_lng=field.boundary_lng,
-        crop_type=field.crop_type,
-        zone="drawn_area",
-    )
+    try:
+        evidence = build_evidence_from_live(
+            field_id=field_id,
+            field_lat=field.boundary_lat,
+            field_lng=field.boundary_lng,
+            crop_type=field.crop_type,
+            zone="drawn_area",
+        )
+    except Exception as e:
+        print(f"[endpoints] Evidence fetch failed for drawn area: {e}")
+        evidence = {
+            "soil_moisture_percent": None,
+            "rainfall_7d_mm": None,
+            "temperature_c": None,
+            "humidity_percent": None,
+            "vegetation_ndvi_change": None,
+            "zone": "drawn_area",
+            "_live_sources": {},
+        }
 
     # Fetch telemetry timeline
     telemetry = []
@@ -559,7 +571,7 @@ async def analyze_drawn_area(
     except Exception as e:
         print(f"[endpoints] Live telemetry failed for drawn area: {e}")
 
-    # Anomaly detection against crop optimal range
+    # Anomaly detection against crop optimal range (pre-check)
     crop_info = get_crop_by_id(field.crop_type)
     severity = 0.0
     anomaly_type = "healthy"
@@ -580,8 +592,28 @@ async def analyze_drawn_area(
 
     confidence = 0.9 if evidence.get("_live_sources", {}).get("soil_available") else 0.6
 
-    # If healthy, skip anomaly creation and return healthy status directly
-    if anomaly_type == "healthy":
+    # Always send data to Gemini for evaluation — even if pre-check says healthy
+    # Gemini evaluates ALL 5 data points against crop requirements
+    evidence_with_crop = {**evidence, "crop_type": field.crop_type}
+
+    # Use Gemini to determine if there's actually a problem
+    try:
+        from services.image_analysis import diagnose_sensors_with_gemini
+        gemini_result = diagnose_sensors_with_gemini(evidence_with_crop, field.crop_type, crop_info)
+    except Exception as e:
+        print(f"[endpoints] Gemini sensor diagnosis failed: {e}, using rule-based fallback")
+        gemini_result = {
+            "is_healthy": anomaly_type == "healthy",
+            "cause": "",
+            "reasoning": f"Rule-based fallback: soil_moisture={evidence.get('soil_moisture_percent')}%, crop={field.crop_type}",
+            "confidence": confidence,
+            "action_key": "scout_monitor",
+            "action_summary": "",
+            "priority": 3,
+        }
+
+    if gemini_result.get("is_healthy", True):
+        # Gemini confirms healthy — return healthy status without creating anomaly
         return {
             "field_id": field_id,
             "anomaly_id": None,
@@ -596,13 +628,48 @@ async def analyze_drawn_area(
             "evidence": evidence,
             "telemetry": telemetry,
             "anomaly_summary": {
-                "anomaly_type": anomaly_type,
-                "severity": round(severity, 2),
-                "confidence": confidence,
+                "anomaly_type": "healthy",
+                "severity": 0.0,
+                "confidence": gemini_result.get("confidence", 0.7),
                 "zone": "drawn_area",
                 "crop_type": field.crop_type,
             },
         }
+
+    # Gemini detected a problem — create Anomaly record with diagnosis
+    # Use Gemini's determination for anomaly_type and severity
+    if gemini_result.get("action_key") == "prioritize_irrigation":
+        anomaly_type = "water_stress"
+    else:
+        anomaly_type = anomaly_type if anomaly_type != "healthy" else "crop_health_issue"
+
+    anomaly = Anomaly(
+        anomaly_id=str(uuid.uuid4()),
+        field_id=field_id,
+        image_id=None,
+        anomaly_type=anomaly_type,
+        severity=round(severity if severity > 0 else 0.5, 2),
+        confidence=round(gemini_result.get("confidence", 0.7), 2),
+        zone="drawn_area",
+        detected_lat=field.boundary_lat,
+        detected_lng=field.boundary_lng,
+    )
+    db.add(anomaly)
+    db.commit()
+    db.refresh(anomaly)
+
+    # Store the diagnosis and recommendation from Gemini
+    try:
+        generate_ai_diagnosis(
+            anomaly.anomaly_id, field_id,
+            anomaly_type, evidence_with_crop, db,
+        )
+        db.commit()
+    except Exception as e:
+        print(f"[endpoints] Failed to generate drawn-area diagnosis: {e}")
+        db.rollback()
+
+    return get_anomaly_details(anomaly.anomaly_id, db)
 
 
 # ============================================================================

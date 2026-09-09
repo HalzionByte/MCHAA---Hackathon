@@ -281,3 +281,215 @@ def diagnose_with_gemini(vision_result: dict, crop_type: str = "wheat") -> dict:
     except Exception as e:
         print(f"[diagnosis] Gemini diagnosis failed: {e}, using fallback")
         return _fallback_diagnosis(vision_result, crop_type)
+
+
+# ============================================================================
+# Sensor-based Diagnosis — evaluates live sensor data against crop requirements
+# ============================================================================
+
+_SENSOR_DIAGNOSIS_PROMPT = """\
+You are an expert agricultural diagnostician evaluating live sensor data for a crop field.
+
+Sensor readings for the most current date:
+- NDVI (vegetation index): {ndvi}
+- Soil moisture: {soil_moisture}%
+- Rainfall (7-day): {rainfall_7d_mm} mm
+- Air temperature: {temperature_c}°C
+- Humidity: {humidity_percent}%
+
+Crop type: {crop_type}
+Optimal soil moisture range for {crop_type}: {optimal_min}% to {optimal_max}%
+
+Evaluate whether the current conditions are optimal for {crop_type}.
+
+Return ONLY valid JSON with this exact schema:
+{{
+  "is_healthy": <true if conditions are suitable for {crop_type}, false if there is a problem>,
+  "cause": "<if not healthy: concise farmer-friendly problem statement, 1-3 sentences explaining what is wrong. If healthy, empty string>",
+  "reasoning": "<brief explanation of your evaluation — which readings are concerning and why>",
+  "confidence": <float 0.0 to 1.0>,
+  "action_key": "<if not healthy: one of: prioritize_irrigation, apply_pesticide, harvest_early, scout_monitor. If healthy, use scout_monitor>",
+  "action_summary": "<if not healthy: one specific sentence recommending what the farmer should do. If healthy, empty string>",
+  "priority": <if not healthy: 1=urgent within 24h, 2=high within 48h, 3=medium within 1 week. If healthy, 3>
+}}
+
+Rules:
+- A crop can be unhealthy if soil moisture is below optimal minimum (water stress) or above optimal maximum (waterlogging), or if NDVI is very low (< 0.3) indicating poor vegetation health, or if temperature is extreme (> 45°C or < 5°C).
+- If multiple issues exist, describe the most critical one.
+- cause and action_summary must be clear, plain English a farmer can understand.
+- action_summary must NOT start with "Recommended action:" — give the actual instruction directly.
+- If conditions are healthy, is_healthy=true and cause/action_summary should be empty strings.
+
+Respond ONLY with the JSON object, no additional text."""
+
+
+def _fallback_sensor_diagnosis(evidence_data: dict, crop_type: str, crop_info: dict) -> dict:
+    """Fallback sensor diagnosis when Gemini API fails — rule-based evaluation."""
+    sm = evidence_data.get("soil_moisture_percent")
+    ndvi = evidence_data.get("vegetation_ndvi_change")
+    rainfall = evidence_data.get("rainfall_7d_mm")
+    temp = evidence_data.get("temperature_c")
+    humidity = evidence_data.get("humidity_percent")
+
+    optimal = crop_info.get("optimal_soil_moisture_percent", {}) if crop_info else {}
+    opt_min = optimal.get("min", 20)
+    opt_max = optimal.get("max", 40)
+
+    is_healthy = True
+    cause = ""
+    action_summary = ""
+    action_key = "scout_monitor"
+    priority = 3
+    issues_found = []
+
+    # Check soil moisture
+    if sm is not None:
+        if sm < opt_min:
+            is_healthy = False
+            deficit = round(opt_min - sm, 1)
+            issues_found.append(f"soil moisture is {sm}% (below {opt_min}-{opt_max}% optimal range)")
+        elif sm > opt_max:
+            is_healthy = False
+            excess = round(sm - opt_max, 1)
+            issues_found.append(f"soil moisture is {sm}% (above {opt_max}% optimal maximum)")
+
+    # Check NDVI
+    if ndvi is not None and ndvi < -0.08:
+        is_healthy = False
+        issues_found.append(f"NDVI dropped by {abs(ndvi):.3f}")
+
+    # Check temperature extremes
+    if temp is not None:
+        if temp > 45:
+            is_healthy = False
+            issues_found.append(f"temperature is {temp}°C (critically high)")
+        elif temp < 5:
+            is_healthy = False
+            issues_found.append(f"temperature is {temp}°C (critically low)")
+
+    # If we have NO usable data at all, report insufficient data
+    has_any_data = any(v is not None for v in [sm, ndvi, rainfall, temp, humidity])
+    if not has_any_data:
+        return {
+            "is_healthy": False,
+            "cause": f"Insufficient sensor data available for {crop_type}. Unable to assess crop conditions. Please verify field conditions manually.",
+            "reasoning": "All sensor readings are unavailable. Cannot determine if conditions are suitable for the crop.",
+            "confidence": 0.3,
+            "action_key": "scout_monitor",
+            "action_summary": "Visit the field to manually check soil moisture, crop health, and weather conditions.",
+            "priority": 2,
+        }
+
+    # Build cause from issues found
+    if issues_found:
+        cause = f"For {crop_type}: {'; '.join(issues_found)}."
+        # Determine action based on most critical issue
+        if sm is not None and sm < opt_min:
+            action_summary = f"Irrigate the field immediately to bring soil moisture to {opt_min}-{opt_max}%."
+            action_key = "prioritize_irrigation"
+            severity = min(1.0, (opt_min - sm) / opt_min)
+            priority = 1 if severity >= 0.6 else (2 if severity >= 0.3 else 3)
+        elif sm is not None and sm > opt_max:
+            action_summary = f"Improve drainage and reduce irrigation to bring soil moisture below {opt_max}%."
+            action_key = "scout_monitor"
+            severity = min(1.0, (sm - opt_max) / opt_max)
+            priority = 1 if severity >= 0.6 else (2 if severity >= 0.3 else 3)
+        elif temp is not None and (temp > 45 or temp < 5):
+            action_summary = "Check crop for heat/cold stress and provide protection as needed."
+            action_key = "scout_monitor"
+            priority = 1 if temp > 45 else 2
+        else:
+            action_summary = "Scout the field for signs of stress, pests, or disease."
+            action_key = "scout_monitor"
+            priority = 2
+
+    data_points = []
+    if sm is not None: data_points.append(f"soil_moisture={sm}%")
+    if ndvi is not None: data_points.append(f"ndvi_change={ndvi}")
+    if rainfall is not None: data_points.append(f"rainfall={rainfall}mm")
+    if temp is not None: data_points.append(f"temp={temp}°C")
+    if humidity is not None: data_points.append(f"humidity={humidity}%")
+
+    confidence = 0.7 if sm is not None else (0.5 if len(data_points) >= 2 else 0.3)
+
+    return {
+        "is_healthy": is_healthy,
+        "cause": cause,
+        "reasoning": f"Rule-based evaluation: {', '.join(data_points)}. Optimal soil moisture for {crop_type}: {opt_min}-{opt_max}%.",
+        "confidence": confidence,
+        "action_key": action_key,
+        "action_summary": action_summary,
+        "priority": priority,
+    }
+
+
+def diagnose_sensors_with_gemini(evidence_data: dict, crop_type: str, crop_info: dict) -> dict:
+    """
+    Evaluate live sensor data against crop requirements using Gemini LLM.
+
+    Args:
+        evidence_data: Dict with soil_moisture_percent, rainfall_7d_mm,
+                       temperature_c, humidity_percent, vegetation_ndvi_change.
+        crop_type: The crop type (wheat, rice, cotton, sugarcane).
+        crop_info: Crop catalog entry with optimal_soil_moisture_percent.
+
+    Returns:
+        dict with is_healthy, cause, reasoning, confidence, action_key,
+        action_summary, priority.
+    """
+    model = _configure_gemini()
+    if not model:
+        return _fallback_sensor_diagnosis(evidence_data, crop_type, crop_info)
+
+    optimal = crop_info.get("optimal_soil_moisture_percent", {}) if crop_info else {}
+    opt_min = optimal.get("min", 20)
+    opt_max = optimal.get("max", 40)
+
+    ndvi = evidence_data.get("vegetation_ndvi_change")
+    sm = evidence_data.get("soil_moisture_percent")
+    rainfall = evidence_data.get("rainfall_7d_mm")
+    temp = evidence_data.get("temperature_c")
+    humidity = evidence_data.get("humidity_percent")
+
+    try:
+        prompt = _SENSOR_DIAGNOSIS_PROMPT.format(
+            ndvi=f"{ndvi:.3f}" if ndvi is not None else "N/A",
+            soil_moisture=f"{sm:.1f}" if sm is not None else "N/A",
+            rainfall_7d_mm=f"{rainfall:.1f}" if rainfall is not None else "N/A",
+            temperature_c=f"{temp:.1f}" if temp is not None else "N/A",
+            humidity_percent=f"{humidity:.1f}" if humidity is not None else "N/A",
+            crop_type=crop_type,
+            optimal_min=opt_min,
+            optimal_max=opt_max,
+        )
+
+        response = model.generate_content([prompt])
+        text = response.text.strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1]
+        if text.endswith("```"):
+            text = text.rsplit("```", 1)[0]
+        text = text.strip()
+
+        result = json.loads(text)
+
+        result["is_healthy"] = bool(result.get("is_healthy", True))
+        result["cause"] = str(result.get("cause", ""))
+        result["reasoning"] = str(result.get("reasoning", ""))
+        result["confidence"] = max(0.0, min(1.0, float(result.get("confidence", 0.7))))
+        result["action_key"] = result.get("action_key", "scout_monitor")
+        if result["action_key"] not in _VALID_ACTION_KEYS:
+            result["action_key"] = "scout_monitor"
+        result["action_summary"] = str(result.get("action_summary", ""))
+        result["priority"] = int(result.get("priority", 3))
+        if result["priority"] not in (1, 2, 3):
+            result["priority"] = 3
+
+        status = "healthy" if result["is_healthy"] else f"problem ({result['action_key']})"
+        print(f"[sensor_diagnosis] Gemini result: {status} "
+              f"(confidence={result['confidence']:.2f})")
+        return result
+
+    except Exception as e:
+        print(f"[sensor_diagnosis] Gemini failed: {e}, using rule-based fallback")
+        return _fallback_sensor_diagnosis(evidence_data, crop_type, crop_info)

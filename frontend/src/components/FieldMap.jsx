@@ -219,12 +219,6 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
               <span>NDVI Δ: {analysisResult.evidence.vegetation_ndvi_change ?? 'N/A'}</span>
             </div>
           )}
-          {!drawnCoords && field.anomalies?.length > 0 && (
-            <div className="flex items-center gap-1 mt-1 text-xs text-[var(--crimson)]">
-              <AlertTriangle className="w-3 h-3" />
-              {t('map.anomalyDetected', { count: field.anomalies.length })}
-            </div>
-          )}
         </div>
 
         {/* Draw mode indicator */}

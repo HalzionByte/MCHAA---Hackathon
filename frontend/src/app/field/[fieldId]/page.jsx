@@ -80,18 +80,21 @@ export default function FieldPage() {
   const [drawnFieldId, setDrawnFieldId] = useState(null);
   const [drawnEvidence, setDrawnEvidence] = useState(null);
   const [drawnFieldName, setDrawnFieldName] = useState(null);
+  const [drawnAnomaly, setDrawnAnomaly] = useState(null);
 
   // Voice play state (browser speechSynthesis)
   const [voicePlaying, setVoicePlaying] = useState(false);
 
   const fieldVoiceText = React.useMemo(() => {
-    if (!field || !anomaly) return '';
-    const problem = anomaly.diagnosis?.cause || 'Unknown problem detected';
-    const action = anomaly.recommendation?.description || anomaly.recommendation?.action?.replace(/_/g, ' ') || '';
-    const parts = [`Alert in ${field.name}. Problem: ${problem}.`];
+    const activeAnomaly = drawnAnomaly || anomaly;
+    if (!field || !activeAnomaly) return '';
+    const problem = activeAnomaly.diagnosis?.cause || 'Unknown problem detected';
+    const action = activeAnomaly.recommendation?.description || activeAnomaly.recommendation?.action?.replace(/_/g, ' ') || '';
+    const fieldName = drawnFieldName || field.name;
+    const parts = [`Alert in ${fieldName}. Problem: ${problem}.`];
     if (action) parts.push(`Recommended action: ${action}.`);
     return parts.join(' ');
-  }, [field, anomaly]);
+  }, [field, anomaly, drawnAnomaly, drawnFieldName]);
 
   // Race guard: track the latest load so stale responses can't overwrite current state
   const loadIdRef = useRef(0);
@@ -131,20 +134,30 @@ export default function FieldPage() {
     router.push(`/anomaly/${anomalyId}`);
   };
 
-  const handleAreaAnalyzed = useCallback((analysis) => {
+  const handleAreaAnalyzed = useCallback(async (analysis) => {
     setDrawnFieldId(analysis.field_id);
     setDrawnEvidence(analysis.evidence);
     setDrawnFieldName(analysis.name || 'Drawn Area');
+    setDrawnAnomaly(null);
+    if (analysis.anomaly_id) {
+      try {
+        const anomalyData = await getAnomaly(analysis.anomaly_id);
+        setDrawnAnomaly(anomalyData);
+      } catch (err) {
+        console.error('Failed to load drawn-area anomaly:', err);
+      }
+    }
   }, []);
 
   const handleResetArea = useCallback(() => {
     setDrawnFieldId(null);
     setDrawnEvidence(null);
     setDrawnFieldName(null);
+    setDrawnAnomaly(null);
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto p-6" style={{ paddingBottom: anomaly ? 100 : 24 }}>
+    <div className="max-w-7xl mx-auto p-6" style={{ paddingBottom: (anomaly || drawnAnomaly) ? 100 : 24 }}>
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -217,6 +230,12 @@ export default function FieldPage() {
           ) : drawnFieldId ? (
             <div className="space-y-6">
               <EvidenceCard evidence={drawnEvidence} fieldId={drawnFieldId} />
+              {drawnAnomaly?.diagnosis && Object.keys(drawnAnomaly.diagnosis).length > 0 && (
+                <DiagnosisCard diagnosis={drawnAnomaly.diagnosis} />
+              )}
+              {drawnAnomaly?.recommendation && Object.keys(drawnAnomaly.recommendation).length > 0 && (
+                <RecommendationCard recommendation={drawnAnomaly.recommendation} createdAt={drawnAnomaly.created_at} />
+              )}
             </div>
           ) : anomaly ? (
             <div className="space-y-6">
@@ -240,7 +259,7 @@ export default function FieldPage() {
       )}
 
       {/* Audio Alert Player */}
-      {anomaly && (
+      {(anomaly || (drawnAnomaly && drawnAnomaly.diagnosis?.cause)) && (
         <AudioAlertPlayer
           text={fieldVoiceText}
           playing={voicePlaying}
