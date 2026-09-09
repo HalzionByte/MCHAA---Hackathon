@@ -151,9 +151,6 @@ export default function AnomalyPage() {
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
             {anomalyTypeLabel(anomaly.anomaly_type)}
           </h1>
-          <p className="text-sm text-[var(--text-muted)]">
-            AI image analysis confidence: {(anomaly.confidence * 100).toFixed(0)}%
-          </p>
           <div className="flex items-center justify-center gap-3 mt-4">
             <span className="badge" style={{ background: severityBg, color: severityColor }}>
               Severity: {severityLabel}({(severity * 100).toFixed(0)}%)
