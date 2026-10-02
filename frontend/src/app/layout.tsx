@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" dir="ltr" className={`${inter.variable} ${notoUrdu.variable}`}>
       <head>
-        <meta name="theme-color" content="#0B0F17" />
+        <meta name="theme-color" content="#F1F7F2" />
       </head>
       <body className="min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] font-[family-name:var(--font-inter)]">
         <LanguageProvider>

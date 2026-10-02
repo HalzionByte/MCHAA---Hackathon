@@ -283,7 +283,7 @@ export default function CropsPage() {
                 <span
                   className="text-sm font-bold px-4 py-1.5 rounded-full"
                   style={{
-                    background: crop.season === 'Rabi' ? 'rgba(6,182,212,0.2)' : crop.season === 'Kharif' ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)',
+                    background: crop.season === 'Rabi' ? 'rgba(21,128,61,0.15)' : crop.season === 'Kharif' ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)',
                     color: crop.season === 'Rabi' ? 'var(--cyan)' : crop.season === 'Kharif' ? 'var(--amber)' : 'var(--emerald)',
                   }}
                 >

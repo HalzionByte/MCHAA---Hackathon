@@ -142,9 +142,9 @@ export default function HealthTimeline({ fieldId }) {
                   color: config.color,
                   borderColor: config.color + '40',
                 } : {
-                  background: 'rgba(30, 41, 59, 0.6)',
+                  background: 'rgba(255, 255, 255, 0.7)',
                   color: 'var(--text-muted)',
-                  borderColor: 'rgba(51, 65, 85, 0.5)',
+                  borderColor: 'var(--card-border)',
                 }}
               >
                 <Icon className="w-3.5 h-3.5" />

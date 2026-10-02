@@ -12,7 +12,7 @@ const severityLabels = {
 export function getSeverityColor(value, thresholdHigh = 0.7, thresholdMedium = 0.3) {
   if (value > thresholdHigh) return 'var(--crimson)';
   if (value > thresholdMedium) return 'var(--amber)';
-  return 'var(--emerald)';
+  return 'var(--emerald-deep)';
 }
 
 export function getSeverityLabel(value, lang = 'en', thresholdHigh = 0.7, thresholdMedium = 0.3) {

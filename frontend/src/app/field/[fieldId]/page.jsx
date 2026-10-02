@@ -58,7 +58,7 @@ function NoAnomalyPlaceholder({ onOpenAnalysis }) {
       </p>
       <button
         onClick={onOpenAnalysis}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--emerald)] text-[var(--bg-main)] text-sm font-semibold hover:opacity-90 transition-opacity"
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--emerald-deep)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
       >
         <Upload className="w-4 h-4" />
         {t('field.uploadAnalyze')}
@@ -187,7 +187,7 @@ export default function FieldPage() {
         </div>
         <button
           onClick={() => setShowAnalysis(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--emerald)] text-[var(--bg-main)] font-semibold text-sm hover:opacity-90 transition-opacity"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--emerald-deep)] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
         >
           <Upload className="w-4 h-4" />
           {t('field.uploadAnalyze')}

@@ -39,12 +39,11 @@ export default function HomeMap() {
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
-      ${satellite ? '' : '.leaflet-layer { filter: invert(100%) hue-rotate(180deg) brightness(1.15) contrast(0.85); }'}
-      .leaflet-container { background: #0B0F17; }
+      .leaflet-container { background: #DCE7E0; }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
-  }, [satellite]);
+  }, []);
 
   const handleSearchSelect = useCallback((result) => {
     setSearchTarget([result.lat, result.lng]);
@@ -141,7 +140,7 @@ export default function HomeMap() {
 
         {/* Draw mode indicator */}
         {drawingEnabled && (
-          <div className="absolute top-3 start-1/2 -translate-x-1/2 z-[1000] glass px-3 py-1.5 text-xs text-[var(--cyan)] font-medium flex items-center gap-2">
+          <div className="absolute top-3 start-1/2 -translate-x-1/2 z-[1000] glass px-3 py-1.5 text-xs text-[var(--emerald-deep)] font-medium flex items-center gap-2">
             <Pencil className="w-3 h-3" />
             Click to place points · Click first point to finish
           </div>

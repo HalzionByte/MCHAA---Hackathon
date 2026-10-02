@@ -97,9 +97,9 @@ export default function RecommendationCard({ recommendation, createdAt, simplifi
 
         <button
           onClick={() => setIsWhatsAppOpen(true)}
-          className="w-full py-2.5 px-4 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-2 hover:bg-emerald-500/25 transition-all"
+          className="w-full py-2.5 px-4 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 font-bold text-xs flex items-center justify-center gap-2 hover:bg-emerald-500/25 transition-all"
         >
-          <MessageSquare className="w-4 h-4 text-emerald-400" />
+          <MessageSquare className="w-4 h-4 text-emerald-600" />
           Send WhatsApp Audio Work Order
         </button>
       </div>

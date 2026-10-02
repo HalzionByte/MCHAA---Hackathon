@@ -373,7 +373,7 @@ export default function FarmOverview({ farmId }) {
       {/* Giant Upload Button */}
       <button
         onClick={() => setShowAnalysis(true)}
-        className="w-full flex items-center justify-center gap-3 py-5 rounded-2xl bg-[var(--emerald)] text-[var(--bg-main)] font-bold text-xl hover:opacity-90 transition-opacity"
+        className="w-full flex items-center justify-center gap-3 py-5 rounded-2xl bg-[var(--emerald-deep)] text-white font-bold text-xl hover:opacity-90 transition-opacity"
         style={{ minHeight: 80 }}
       >
         <Upload className="w-7 h-7" />

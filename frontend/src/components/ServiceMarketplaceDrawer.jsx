@@ -99,7 +99,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                 <div>
                   <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                     On-Demand Service Marketplace
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--emerald)]/20 text-[var(--emerald)] font-semibold border border-[var(--emerald)]/30">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--emerald)]/20 text-[var(--emerald-deep)] font-semibold border border-[var(--emerald)]/30">
                       Live GPS
                     </span>
                   </h2>
@@ -110,7 +110,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition-colors"
+                className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -152,7 +152,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
             {savingsData && (
               <div className="glass-card p-4 rounded-xl border border-[var(--emerald)]/30 bg-gradient-to-r from-[var(--emerald)]/10 via-transparent to-[var(--cyan)]/10 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--emerald)] flex items-center gap-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--emerald-deep)] flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4" /> Cost Savings Calculator (Spot vs Blanket)
                   </span>
                   <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--emerald)] text-black font-mono">
@@ -167,7 +167,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                   </div>
                   <div className="bg-[var(--card-surface)]/60 p-2 rounded-lg border border-[var(--card-border)]">
                     <div className="text-[10px] text-[var(--text-muted)]">Money Saved</div>
-                    <div className="text-sm font-bold text-[var(--emerald)]">Rs. {savingsData.savings_pkr.toLocaleString()}</div>
+                    <div className="text-sm font-bold text-[var(--emerald-deep)]">Rs. {savingsData.savings_pkr.toLocaleString()}</div>
                   </div>
                   <div className="bg-[var(--card-surface)]/60 p-2 rounded-lg border border-[var(--card-border)]">
                     <div className="text-[10px] text-[var(--text-muted)]">Water Saved</div>
@@ -180,7 +180,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
 
                 <div className="text-[11px] text-[var(--text-muted)] flex items-center justify-between pt-1 border-t border-[var(--card-border)]">
                   <span>Traditional Blanket Spray: <strong className="line-through text-red-400">Rs. {savingsData.blanket_spray_cost_pkr.toLocaleString()}</strong></span>
-                  <span>AI Drone Spot Spray: <strong className="text-[var(--emerald)]">Rs. {savingsData.spot_drone_cost_pkr.toLocaleString()}</strong></span>
+                  <span>AI Drone Spot Spray: <strong className="text-[var(--emerald-deep)]">Rs. {savingsData.spot_drone_cost_pkr.toLocaleString()}</strong></span>
                 </div>
               </div>
             )}
@@ -239,7 +239,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                           </div>
 
                           <div className="text-end">
-                            <div className="text-sm font-extrabold text-[var(--emerald)]">
+                            <div className="text-sm font-extrabold text-[var(--emerald-deep)]">
                               Rs. {p.price_per_acre_pkr.toLocaleString()}
                             </div>
                             <div className="text-[10px] text-[var(--text-muted)]">per acre</div>
@@ -260,9 +260,9 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                 <div className="w-10 h-10 rounded-full bg-[var(--emerald)] text-black flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
-                <h4 className="font-bold text-base text-[var(--emerald)]">Dispatch Confirmed!</h4>
+                <h4 className="font-bold text-base text-[var(--emerald-deep)]">Dispatch Confirmed!</h4>
                 <p className="text-xs text-[var(--text-muted)]">
-                  Ref Code: <span className="font-mono text-white font-bold">{dispatchResult.confirmation_code}</span>
+                  Ref Code: <span className="font-mono text-[var(--text-primary)] font-bold">{dispatchResult.confirmation_code}</span>
                 </p>
                 <p className="text-xs text-[var(--text-primary)]">
                   Operator <strong>{dispatchResult.provider_name}</strong> is en route. ETA: ~{dispatchResult.eta_hours} hours.
@@ -279,7 +279,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                 <button
                   onClick={handleDispatch}
                   disabled={!selectedProvider || dispatching}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[var(--cyan)] to-[var(--emerald)] text-black font-extrabold text-sm flex items-center justify-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-50"
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[var(--cyan)] to-[var(--emerald)] text-white font-extrabold text-sm flex items-center justify-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-50"
                 >
                   {dispatching ? (
                     <div className="animate-spin w-5 h-5 border-2 border-black border-t-transparent rounded-full" />
@@ -291,7 +291,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                   )}
                 </button>
                 <div className="text-center text-[10px] text-[var(--text-muted)] flex items-center justify-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-[var(--emerald)]" /> Guaranteed Certified Equipment & Licensed Pilot
+                  <ShieldCheck className="w-3 h-3 text-[var(--emerald-deep)]" /> Guaranteed Certified Equipment & Licensed Pilot
                 </div>
               </div>
             )}

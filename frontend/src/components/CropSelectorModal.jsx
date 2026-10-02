@@ -197,7 +197,7 @@ export default function CropSelectorModal({ isOpen, onClose, fieldId, currentCro
                             <span
                               className="text-xs font-semibold mt-2 px-3 py-1 rounded-full"
                               style={{
-                                background: crop.season === 'Rabi' ? 'rgba(6,182,212,0.2)' : 'rgba(245,158,11,0.2)',
+                                background: crop.season === 'Rabi' ? 'rgba(21,128,61,0.15)' : 'rgba(245,158,11,0.2)',
                                 color: crop.season === 'Rabi' ? 'var(--cyan)' : 'var(--amber)',
                               }}
                             >

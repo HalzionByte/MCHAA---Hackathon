@@ -117,13 +117,13 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-3">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              <div className="p-2.5 rounded-xl bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">
                 <MessageSquare className="w-6 h-6" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
                   WhatsApp "Audio Work Order"
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 font-semibold border border-emerald-500/30">
                     Voice Dispatch
                   </span>
                 </h2>
@@ -137,7 +137,7 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
                 if ('speechSynthesis' in window) window.speechSynthesis.cancel();
                 onClose();
               }}
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition-colors"
+              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -160,8 +160,8 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
                   onClick={() => setDialect(d.id)}
                   className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex flex-col items-center gap-1 border ${
                     dialect === d.id
-                      ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 ring-1 ring-emerald-400'
-                      : 'bg-[var(--card-surface)] border-[var(--card-border)] text-[var(--text-muted)] hover:text-white'
+                      ? 'bg-emerald-500/20 border-emerald-400 text-emerald-700 ring-1 ring-emerald-400'
+                      : 'bg-[var(--card-surface)] border-[var(--card-border)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   <span className="text-sm">{d.flag}</span>
@@ -204,9 +204,9 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
               Synthesizing voice work order...
             </div>
           ) : workOrder ? (
-            <div className="glass-card p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-3">
+            <div className="glass-card p-4 rounded-xl border border-emerald-500/30 bg-emerald-50 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4" /> Synthesized 15-Second Voice Script
                 </span>
                 <button
@@ -225,7 +225,7 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
                 </button>
               </div>
 
-              <p className="text-xs italic text-emerald-200/90 leading-relaxed font-mono bg-black/30 p-2.5 rounded-lg border border-emerald-500/20">
+              <p className="text-xs italic text-[var(--text-primary)] leading-relaxed font-mono bg-[var(--bg-main)] p-2.5 rounded-lg border border-emerald-500/20">
                 "{workOrder.spoken_audio_script}"
               </p>
             </div>
@@ -234,9 +234,9 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
           {/* Task Confirmation Tracker */}
           {confirmedData ? (
             <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-400 text-center space-y-1">
-              <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto" />
-              <h4 className="text-xs font-bold text-emerald-300">Task Completed & Verified!</h4>
-              <p className="text-[11px] text-emerald-200">{confirmedData.message}</p>
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto" />
+              <h4 className="text-xs font-bold text-emerald-700">Task Completed & Verified!</h4>
+              <p className="text-[11px] text-emerald-800">{confirmedData.message}</p>
             </div>
           ) : (
             <div className="p-3 rounded-xl bg-[var(--card-surface)] border border-[var(--card-border)] space-y-2">
@@ -256,7 +256,7 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
                 <button
                   onClick={handleConfirmTask}
                   disabled={confirming}
-                  className="px-3 py-2 rounded-lg bg-[var(--cyan)] text-black font-bold text-xs flex items-center gap-1 hover:opacity-90 disabled:opacity-50"
+                  className="px-3 py-2 rounded-lg bg-[var(--cyan)] text-white font-bold text-xs flex items-center gap-1 hover:opacity-90 disabled:opacity-50"
                 >
                   {confirming ? 'Saving...' : 'Confirm'}
                 </button>
