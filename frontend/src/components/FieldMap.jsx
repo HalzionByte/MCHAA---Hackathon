@@ -8,7 +8,7 @@ import LocationSearch from './LocationSearch';
 import MapRecenter from './MapRecenter';
 import DrawControl from './DrawControl';
 import CreateFieldModal from './CreateFieldModal';
-import { Sprout, AlertTriangle, Pencil, X } from 'lucide-react';
+import { Sprout, AlertTriangle, Pencil, Satellite, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 const cropNameKeys = {
@@ -45,6 +45,7 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [polygonError, setPolygonError] = useState(null);
+  const [satellite, setSatellite] = useState(true);
 
   useEffect(() => {
     async function loadField() {
@@ -61,12 +62,12 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
-      .leaflet-layer { filter: invert(100%) hue-rotate(180deg) brightness(1.15) contrast(0.85); }
+      ${satellite ? '' : '.leaflet-layer { filter: invert(100%) hue-rotate(180deg) brightness(1.15) contrast(0.85); }'}
       .leaflet-container { background: #0B0F17; }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
-  }, []);
+  }, [satellite]);
 
   const handleSearchSelect = useCallback((result) => {
     setSearchTarget([result.lat, result.lng]);
@@ -149,11 +150,19 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
 
       <div className="relative h-96 w-full rounded-lg overflow-hidden">
         <MapContainer center={center} zoom={14} maxZoom={20} scrollWheelZoom={!drawingEnabled} className="h-full w-full rounded-lg">
-          <TileLayer
-            attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            maxZoom={19}
-          />
+          {satellite ? (
+            <TileLayer
+              attribution='Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={19}
+            />
+          ) : (
+            <TileLayer
+              attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              maxZoom={19}
+            />
+          )}
 
           {searchTarget && <MapRecenter center={searchTarget} zoom={14} />}
 
@@ -188,8 +197,16 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
           <MapLegend />
         </MapContainer>
 
-        {/* Top-right: Draw button only */}
+        {/* Top-right: basemap toggle + Draw button */}
         <div className="absolute top-3 end-3 z-[1000] flex items-center gap-2">
+          <button
+            onClick={() => setSatellite(v => !v)}
+            className={`map-chip ${satellite ? 'map-chip-active' : ''}`}
+            title={satellite ? 'Switch to street map' : 'Switch to satellite view'}
+          >
+            <Satellite className="w-3.5 h-3.5" />
+            {satellite ? 'Street' : 'Satellite'}
+          </button>
           <button
             onClick={() => drawingEnabled ? handleDrawCancel() : setDrawingEnabled(true)}
             className={`map-chip ${drawingEnabled ? 'map-chip-active' : ''}`}
