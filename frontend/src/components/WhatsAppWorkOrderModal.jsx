@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -98,31 +99,34 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[2500] flex items-center justify-center p-4"
-        style={{ background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(6px)' }}
+        style={{ background: 'rgba(0, 0, 0, 0.8)' }}
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="glass-card p-6 w-full max-w-lg space-y-5 border border-[var(--card-border)] bg-[var(--bg-card)] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
+          className="w-full max-w-lg bg-[var(--card-surface)] border border-[var(--card-border)] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+          role="dialog"
+          aria-modal="true"
+          aria-label='WhatsApp Audio Work Order'
         >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-3">
+          {/* Header (sticky) */}
+          <div className="shrink-0 flex items-center justify-between gap-3 bg-[var(--card-surface)] px-6 pt-6 pb-3 border-b border-[var(--card-border)]">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">
                 <MessageSquare className="w-6 h-6" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
-                  WhatsApp "Audio Work Order"
+                  WhatsApp &ldquo;Audio Work Order&rdquo;
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 font-semibold border border-emerald-500/30">
                     Voice Dispatch
                   </span>
@@ -143,12 +147,15 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
             </button>
           </div>
 
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
           {/* Dialect Selector Tabs */}
           <div>
             <label className="text-xs font-medium text-[var(--text-muted)] block mb-1">
               Select Regional Voice Dialect
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
                 { id: 'ur', label: 'اردو Urdu', flag: '🇵🇰' },
                 { id: 'pa', label: 'پنجابی Punjabi', flag: '🌾' },
@@ -204,7 +211,7 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
               Synthesizing voice work order...
             </div>
           ) : workOrder ? (
-            <div className="glass-card p-4 rounded-xl border border-emerald-500/30 bg-emerald-50 space-y-3">
+            <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-50 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4" /> Synthesized 15-Second Voice Script
@@ -226,7 +233,7 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
               </div>
 
               <p className="text-xs italic text-[var(--text-primary)] leading-relaxed font-mono bg-[var(--bg-main)] p-2.5 rounded-lg border border-emerald-500/20">
-                "{workOrder.spoken_audio_script}"
+                &ldquo;{workOrder.spoken_audio_script}&rdquo;
               </p>
             </div>
           ) : null}
@@ -264,21 +271,26 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
             </div>
           )}
 
-          {/* WhatsApp Deep Link Button */}
+          </div>
+
+          {/* Sticky WhatsApp Deep Link Button */}
           {workOrder && (
-            <a
-              href={workOrder.whatsapp_deep_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-3.5 rounded-xl bg-[#25D366] text-black font-extrabold text-sm flex items-center justify-center gap-2.5 hover:bg-[#20bd5a] transition-colors shadow-lg shadow-emerald-950/40"
-            >
-              <Send className="w-5 h-5 fill-black" />
-              Launch WhatsApp Voice Dispatch to {workerPhone}
-              <ExternalLink className="w-4 h-4 ml-1" />
-            </a>
+            <div className="shrink-0 bg-[var(--card-surface)] border-t border-[var(--card-border)] px-6 py-4">
+              <a
+                href={workOrder.whatsapp_deep_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 rounded-xl bg-[#25D366] text-black font-extrabold text-sm flex items-center justify-center gap-2.5 hover:bg-[#20bd5a] transition-colors shadow-lg shadow-emerald-950/40"
+              >
+                <Send className="w-5 h-5 fill-black" />
+                Launch WhatsApp Voice Dispatch to {workerPhone}
+                <ExternalLink className="w-4 h-4 ml-1" />
+              </a>
+            </div>
           )}
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

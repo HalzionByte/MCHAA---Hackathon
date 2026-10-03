@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -72,14 +73,14 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[2500] flex justify-end"
-        style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(6px)' }}
+        style={{ background: 'rgba(0, 0, 0, 0.8)' }}
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <motion.div
@@ -87,10 +88,15 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="w-full max-w-xl bg-[var(--bg-card)] border-s border-[var(--card-border)] h-full overflow-y-auto p-6 flex flex-col justify-between shadow-2xl"
+          className="w-full max-w-xl bg-[var(--card-surface)] border-s border-[var(--card-border)] h-full flex flex-col shadow-2xl overflow-hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="On-Demand Service Marketplace"
         >
-          {/* Header */}
-          <div className="space-y-4">
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {/* Header */}
+            <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-[var(--cyan)]/15 border border-[var(--cyan)]/30 text-[var(--cyan)]">
@@ -150,7 +156,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
 
             {/* Cost-Efficiency Calculator Widget */}
             {savingsData && (
-              <div className="glass-card p-4 rounded-xl border border-[var(--emerald)]/30 bg-gradient-to-r from-[var(--emerald)]/10 via-transparent to-[var(--cyan)]/10 space-y-3">
+              <div className="p-4 rounded-xl border border-[var(--emerald)]/30 bg-gradient-to-r from-[var(--emerald)]/10 via-transparent to-[var(--cyan)]/10 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-[var(--emerald-deep)] flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4" /> Cost Savings Calculator (Spot vs Blanket)
@@ -172,14 +178,14 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                   <div className="bg-[var(--card-surface)]/60 p-2 rounded-lg border border-[var(--card-border)]">
                     <div className="text-[10px] text-[var(--text-muted)]">Water Saved</div>
                     <div className="text-sm font-bold text-[var(--cyan)] flex items-center justify-center gap-0.5">
-                      <Droplets className="w-3 h-3 text-cyan-400" />
+                      <Droplets className="w-3 h-3 text-[var(--cyan)]" />
                       {savingsData.water_saved_liters}L
                     </div>
                   </div>
                 </div>
 
                 <div className="text-[11px] text-[var(--text-muted)] flex items-center justify-between pt-1 border-t border-[var(--card-border)]">
-                  <span>Traditional Blanket Spray: <strong className="line-through text-red-400">Rs. {savingsData.blanket_spray_cost_pkr.toLocaleString()}</strong></span>
+                  <span>Traditional Blanket Spray: <strong className="line-through text-red-600">Rs. {savingsData.blanket_spray_cost_pkr.toLocaleString()}</strong></span>
                   <span>AI Drone Spot Spray: <strong className="text-[var(--emerald-deep)]">Rs. {savingsData.spot_drone_cost_pkr.toLocaleString()}</strong></span>
                 </div>
               </div>
@@ -197,7 +203,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                   Locating nearby certified equipment...
                 </div>
               ) : providers.length === 0 ? (
-                <div className="py-8 text-center text-sm text-[var(--text-muted)] glass-card">
+                <div className="py-8 text-center text-sm text-[var(--text-muted)] bg-[var(--card-surface)] rounded-xl border border-[var(--card-border)]">
                   No operators found for selected filter. Try changing district or hardware.
                 </div>
               ) : (
@@ -210,10 +216,10 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                       <div
                         key={p.provider_id}
                         onClick={() => setSelectedProvider(p)}
-                        className={`glass-card p-4 rounded-xl cursor-pointer transition-all border ${
+                        className={`p-4 rounded-xl cursor-pointer transition-all border ${
                           isSelected
                             ? 'border-[var(--cyan)] bg-[var(--cyan)]/10 ring-1 ring-[var(--cyan)]'
-                            : 'border-[var(--card-border)] hover:border-[var(--cyan)]/50 hover:bg-[var(--card-surface)]'
+                            : 'border-[var(--card-border)] bg-[var(--card-surface)] hover:border-[var(--cyan)]/50 hover:bg-[var(--bg-main)]'
                         }`}
                       >
                         <div className="flex items-start justify-between">
@@ -222,7 +228,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                               <span className="text-base">{isDrone ? '🛸' : '🚜'}</span>
                               <h4 className="font-bold text-sm text-[var(--text-primary)]">{p.name}</h4>
                               {p.rating >= 4.8 && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300 font-semibold border border-yellow-500/30 flex items-center gap-0.5">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold border border-amber-300 flex items-center gap-0.5">
                                   <ShieldCheck className="w-3 h-3" /> Top Verified
                                 </span>
                               )}
@@ -231,8 +237,8 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                               <span className="flex items-center gap-1">
                                 <Clock className="w-3 h-3 text-[var(--cyan)]" /> ETA: ~{p.eta_hours} hr
                               </span>
-                              <span className="flex items-center gap-1 text-yellow-400 font-medium">
-                                <Star className="w-3 h-3 fill-yellow-400" /> {p.rating}
+                              <span className="flex items-center gap-1 text-amber-600 font-medium">
+                                <Star className="w-3 h-3 fill-amber-500" /> {p.rating}
                               </span>
                               <span>📍 {p.district}</span>
                             </div>
@@ -252,9 +258,10 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
               )}
             </div>
           </div>
+          </div>
 
-          {/* Footer Action / Confirmation */}
-          <div className="pt-4 border-t border-[var(--card-border)] mt-4 space-y-3">
+          {/* Sticky Footer Action / Confirmation */}
+          <div className="shrink-0 border-t border-[var(--card-border)] bg-[var(--card-surface)] px-6 py-4 space-y-3">
             {dispatchResult ? (
               <div className="p-4 rounded-xl bg-[var(--emerald)]/15 border border-[var(--emerald)]/40 text-center space-y-2">
                 <div className="w-10 h-10 rounded-full bg-[var(--emerald)] text-black flex items-center justify-center mx-auto">
@@ -279,13 +286,13 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                 <button
                   onClick={handleDispatch}
                   disabled={!selectedProvider || dispatching}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[var(--cyan)] to-[var(--emerald)] text-white font-extrabold text-sm flex items-center justify-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-50"
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[var(--emerald-deep)] to-emerald-900 text-white font-extrabold text-sm flex items-center justify-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-50"
                 >
                   {dispatching ? (
-                    <div className="animate-spin w-5 h-5 border-2 border-black border-t-transparent rounded-full" />
+                    <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
                   ) : (
                     <>
-                      <Zap className="w-5 h-5 fill-black" />
+                      <Zap className="w-5 h-5 fill-white" />
                       1-Click Dispatch Operator ({selectedProvider?.name || 'Select Provider'})
                     </>
                   )}
@@ -298,6 +305,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
