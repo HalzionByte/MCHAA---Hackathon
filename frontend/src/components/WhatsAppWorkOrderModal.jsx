@@ -172,7 +172,7 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
                   }`}
                 >
                   <span className="text-sm">{d.flag}</span>
-                  <span className="truncate max-w-full">{d.label}</span>
+                  <span>{d.label}</span>
                 </button>
               ))}
             </div>
@@ -198,6 +198,7 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
               <input
                 type="text"
                 value={workerPhone}
+                dir="ltr"
                 onChange={(e) => setWorkerPhone(e.target.value)}
                 className="w-full bg-[var(--card-surface)] border border-[var(--card-border)] text-xs rounded-lg p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-emerald-400"
               />
@@ -232,7 +233,7 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
                 </button>
               </div>
 
-              <p className="text-xs italic text-[var(--text-primary)] leading-relaxed font-mono bg-[var(--bg-main)] p-2.5 rounded-lg border border-emerald-500/20">
+              <p className={`text-xs text-[var(--text-primary)] leading-relaxed bg-[var(--bg-main)] p-2.5 rounded-lg border border-emerald-500/20 ${dialect === 'en' ? 'italic font-mono' : ''}`}>
                 &ldquo;{workOrder.spoken_audio_script}&rdquo;
               </p>
             </div>
@@ -283,8 +284,8 @@ export default function WhatsAppWorkOrderModal({ isOpen, onClose, fieldId, anoma
                 className="w-full py-3.5 rounded-xl bg-[#25D366] text-black font-extrabold text-sm flex items-center justify-center gap-2.5 hover:bg-[#20bd5a] transition-colors shadow-lg shadow-emerald-950/40"
               >
                 <Send className="w-5 h-5 fill-black" />
-                Launch WhatsApp Voice Dispatch to {workerPhone}
-                <ExternalLink className="w-4 h-4 ml-1" />
+                Launch WhatsApp Voice Dispatch to <span dir="ltr">{workerPhone}</span>
+                <ExternalLink className="w-4 h-4 ms-1" />
               </a>
             </div>
           )}

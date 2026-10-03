@@ -77,7 +77,7 @@ export default {
   "comm.playGuide": "آواز کی رہنمائی چلائیں",
   "comm.pauseGuide": "رہنمائی روکیں",
   "comm.audioUnavailable": "پیش نظارے کے لیے آواز دستیاب نہیں",
-  "comm.smsPreview": "ایس ایم ایس ا_alert پیش نظارہ",
+  "comm.smsPreview": "ایس ایم ایس الرٹ پیش نظارہ",
   "comm.agentName": "فصل صحت ایجنٹ",
   "comm.characters": "{{count}}/160 حروف",
   "comm.lowBandwidth": "کم بینڈوتھ تیار",
@@ -216,5 +216,5 @@ export default {
 
   // Language
   "lang.en": "EN",
-  "lang.ur": "فارسی",
+  "lang.ur": "اردو",
 };

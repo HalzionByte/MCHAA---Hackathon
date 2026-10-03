@@ -86,7 +86,7 @@ function WaterGauge({ mm, maxMm = 2000 }) {
         </span>
         <span className="text-sm font-bold text-[var(--text-primary)]">{mm} mm</span>
       </div>
-      <div className="w-full h-3 rounded-full bg-[var(--card-border)] overflow-hidden">
+      <div className="w-full h-3 rounded-full bg-[var(--card-border)] overflow-hidden" style={{ direction: 'ltr' }}>
         <div
           className="h-full rounded-full transition-all"
           style={{
@@ -111,18 +111,18 @@ function MoistureRange({ min, max }) {
         <div
           className="absolute h-full rounded-full"
           style={{
-            left: `${minPct}%`,
+            insetInlineStart: `${minPct}%`,
             width: `${maxPct - minPct}%`,
             background: 'linear-gradient(90deg, var(--cyan), var(--emerald))',
           }}
         />
         <div
           className="absolute w-3 h-3 rounded-full border-2 border-[var(--bg-main)]"
-          style={{ left: `${minPct}%`, top: -2, background: 'var(--cyan)' }}
+          style={{ insetInlineStart: `${minPct}%`, top: -2, background: 'var(--cyan)' }}
         />
         <div
           className="absolute w-3 h-3 rounded-full border-2 border-[var(--bg-main)]"
-          style={{ left: `calc(${maxPct}% - 12px)`, top: -2, background: 'var(--emerald)' }}
+          style={{ insetInlineStart: `calc(${maxPct}% - 12px)`, top: -2, background: 'var(--emerald)' }}
         />
       </div>
       <div className="flex justify-between mt-1">

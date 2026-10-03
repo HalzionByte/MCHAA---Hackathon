@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { getPakAgriDatasetStats, exportPakAgriDataset, submitRLHFFeedback } from '../../api/api';
+import { useLanguage } from '../../context/LanguageContext';
 
 const FORMAT_INFO = {
   jsonl: {
@@ -189,6 +190,7 @@ function RLHFModal({ isOpen, onClose, anomalies }) {
 }
 
 export default function PakAgriVisionPage() {
+  const { lang } = useLanguage();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedFormat, setSelectedFormat] = useState('jsonl');
@@ -249,7 +251,7 @@ export default function PakAgriVisionPage() {
               href="/"
               className="flex items-center justify-center w-10 h-10 rounded-lg border border-[var(--card-border)] bg-[var(--card-surface)] hover:bg-[var(--card-border)] transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className={`w-5 h-5 ${lang === 'ur' ? 'rotate-180' : ''}`} />
             </Link>
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-green-500/15 border border-green-500/30">
@@ -315,13 +317,13 @@ export default function PakAgriVisionPage() {
                 Object.entries(stats.anomaly_breakdown).map(([type, count]) => (
                   <div key={type} className="flex items-center gap-3">
                     <span className="text-xs text-[var(--text-muted)] w-36 capitalize">{type.replace(/_/g, ' ')}</span>
-                    <div className="flex-1 bg-[var(--card-surface)] rounded-full h-2 overflow-hidden">
+                    <div className="flex-1 bg-[var(--card-surface)] rounded-full h-2 overflow-hidden" style={{ direction: 'ltr' }}>
                       <div
                         className="h-2 rounded-full bg-[var(--cyan)]"
                         style={{ width: `${Math.min(100, (count / (stats.total_records || 1)) * 100)}%` }}
                       />
                     </div>
-                    <span className="text-xs font-mono text-[var(--text-muted)] w-6 text-right">{count}</span>
+                    <span className="text-xs font-mono text-[var(--text-muted)] w-6 text-end">{count}</span>
                   </div>
                 ))
               )}
@@ -377,7 +379,7 @@ export default function PakAgriVisionPage() {
               <button
                 key={key}
                 onClick={() => { setSelectedFormat(key); setExportResult(null); }}
-                className={`p-4 rounded-xl border text-left transition-all space-y-2 ${
+                className={`p-4 rounded-xl border text-start transition-all space-y-2 ${
                   selected
                     ? 'ring-1 ring-[var(--cyan)] border-[var(--cyan)] bg-[var(--cyan)]/10'
                     : 'border-[var(--card-border)] bg-[var(--card-surface)] hover:border-[var(--cyan)]/50'

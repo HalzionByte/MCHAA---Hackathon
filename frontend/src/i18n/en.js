@@ -215,5 +215,5 @@ export default {
 
   // Language
   "lang.en": "EN",
-  "lang.ur": "فارسی",
+  "lang.ur": "اردو",
 };

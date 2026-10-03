@@ -17,8 +17,10 @@ import {
   Navigation
 } from 'lucide-react';
 import { getServiceProviders, dispatchService, calculateServiceSavings } from '../api/api';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, anomalyId, severity = 0.8 }) {
+  const { lang } = useLanguage();
   const [district, setDistrict] = useState('Multan');
   const [serviceType, setServiceType] = useState('all');
   const [providers, setProviders] = useState([]);
@@ -84,9 +86,9 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <motion.div
-          initial={{ x: '100%' }}
+          initial={{ x: lang === 'ur' ? '-100%' : '100%' }}
           animate={{ x: 0 }}
-          exit={{ x: '100%' }}
+          exit={{ x: lang === 'ur' ? '-100%' : '100%' }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
           className="w-full max-w-xl bg-[var(--card-surface)] border-s border-[var(--card-border)] h-full flex flex-col shadow-2xl overflow-hidden"
           role="dialog"
@@ -161,7 +163,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                   <span className="text-xs font-bold uppercase tracking-wider text-[var(--emerald-deep)] flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4" /> Cost Savings Calculator (Spot vs Blanket)
                   </span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--emerald)] text-black font-mono">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[var(--emerald)] text-black font-mono" dir="ltr">
                     -{savingsData.savings_percent}% Costs
                   </span>
                 </div>
@@ -269,7 +271,7 @@ export default function ServiceMarketplaceDrawer({ isOpen, onClose, fieldId, ano
                 </div>
                 <h4 className="font-bold text-base text-[var(--emerald-deep)]">Dispatch Confirmed!</h4>
                 <p className="text-xs text-[var(--text-muted)]">
-                  Ref Code: <span className="font-mono text-[var(--text-primary)] font-bold">{dispatchResult.confirmation_code}</span>
+                  Ref Code: <span className="font-mono text-[var(--text-primary)] font-bold" dir="ltr">{dispatchResult.confirmation_code}</span>
                 </p>
                 <p className="text-xs text-[var(--text-primary)]">
                   Operator <strong>{dispatchResult.provider_name}</strong> is en route. ETA: ~{dispatchResult.eta_hours} hours.

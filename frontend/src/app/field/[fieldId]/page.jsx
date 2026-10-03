@@ -203,7 +203,7 @@ export default function FieldPage() {
           </span>
           <button
             onClick={handleResetArea}
-            className="ml-auto flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            className="me-auto flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3 h-3" />
             Reset

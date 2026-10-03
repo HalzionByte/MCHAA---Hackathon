@@ -239,7 +239,7 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
 
         {/* Draw mode indicator */}
         {drawingEnabled && (
-          <div className="absolute top-3 start-1/2 -translate-x-1/2 z-[1000] glass px-3 py-1.5 text-xs text-[var(--emerald-deep)] font-medium flex items-center gap-2">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] glass px-3 py-1.5 text-xs text-[var(--emerald-deep)] font-medium flex items-center gap-2">
             <Pencil className="w-3 h-3" />
             Click to place points · Click first point to finish
           </div>
@@ -247,7 +247,7 @@ export default function FieldMap({ fieldId, onAreaAnalyzed, resetKey }) {
 
         {/* Polygon error toast */}
         {polygonError && (
-          <div className="absolute top-3 start-1/2 -translate-x-1/2 z-[1000] glass px-3 py-1.5 text-xs text-[var(--crimson)] font-medium">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] glass px-3 py-1.5 text-xs text-[var(--crimson)] font-medium">
             {polygonError}
           </div>
         )}

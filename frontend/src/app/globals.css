@@ -29,8 +29,14 @@ html, body {
 }
 
 .font-urdu {
-  font-family: var(--font-noto);
+  font-family: var(--font-noto), var(--font-inter), sans-serif;
+  line-height: 1.9;
 }
+.font-urdu :is(
+  .text-\[10px\], .text-\[11px\], .text-xs, .text-sm, .text-base,
+  .text-lg, .text-xl, .text-2xl, .text-3xl,
+  .leading-none, .leading-tight, .leading-snug, .leading-normal, .leading-relaxed
+) { line-height: 1.9; }
 
 a { color: inherit; text-decoration: none; }
 

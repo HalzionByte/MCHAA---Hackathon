@@ -68,7 +68,7 @@ export default function RecommendationCard({ recommendation, createdAt, simplifi
       {/* Priority Badge (top-right) */}
       <div className="absolute top-3 end-3">
         <span className="badge" style={{ background: config.bg, color: config.color }}>
-          <PriorityIcon className="w-3 h-3 mr-1" />
+          <PriorityIcon className="w-3 h-3 me-1" />
           {config.label}
         </span>
       </div>
